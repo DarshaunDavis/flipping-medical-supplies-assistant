@@ -1,0 +1,65 @@
+# ───────────────────────────────────────────────
+# Android Studio / IntelliJ IDEA
+# ───────────────────────────────────────────────
+*.iml
+.idea/
+/*.iws
+/*.ipr
+
+# Exclude IntelliJ workspace/config files
+/.idea/caches/
+/.idea/libraries/
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+vcs.xml
+modules.xml
+misc.xml
+
+# ───────────────────────────────────────────────
+# Gradle
+# ───────────────────────────────────────────────
+.gradle/
+/build/
+/**/build/
+/captures/
+/.externalNativeBuild/
+
+# Keep the Gradle wrapper files
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!/gradlew
+!/gradlew.bat
+
+# ───────────────────────────────────────────────
+# Local config
+# ───────────────────────────────────────────────
+local.properties
+**/local.properties
+
+# ───────────────────────────────────────────────
+# NDK / CMake
+# ───────────────────────────────────────────────
+.cxx/
+/obj/
+/jniLibs/
+
+# ───────────────────────────────────────────────
+# Google services & signing
+# ───────────────────────────────────────────────
+/app/google-services.json
+*.jks
+*.keystore
+
+# ───────────────────────────────────────────────
+# OS / Editor Files
+# ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+
+# ───────────────────────────────────────────────
+# Ensure resource XML stays versioned
+# ───────────────────────────────────────────────
+!app/src/**/*.xml

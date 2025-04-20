@@ -1,5 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- res/values/themes.xml -->
 <resources>
+    <!-- Your app’s default theme, now based on Material3 -->
+    <style name="Theme.FlippingMedicalSuppliesAssistant"
+        parent="Theme.Material3.DayNight.NoActionBar">
+    </style>
 
-    <style name="Theme.FlippingMedicalSuppliesAssistant" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Splash theme -->
+    <style name="Theme.FlippingSplash"
+        parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenBackground">@android:color/transparent</item>
+        <item name="postSplashScreenTheme">@style/Theme.FlippingMedicalSuppliesAssistant</item>
+    </style>
 </resources>

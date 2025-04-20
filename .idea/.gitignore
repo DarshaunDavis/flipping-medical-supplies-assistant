@@ -1,0 +1,47 @@
+# ------------------------------
+# Android Studio / IntelliJ IDEA
+# ------------------------------
+*.iml
+.idea/
+.gradle/
+local.properties
+.DS_Store
+
+# ------------------------------
+# Build / Generated files
+# ------------------------------
+/build/
+/**/build/
+/captures/
+/.externalNativeBuild/
+
+# ------------------------------
+# NDK / CMake
+# ------------------------------
+/obj/
+/jniLibs/
+
+# ------------------------------
+# Google Services (keep yours private)
+/*google-services.json
+
+# ------------------------------
+# Signing
+# ------------------------------
+*.jks
+*.keystore
+
+# ------------------------------
+# Logs
+# ------------------------------
+*.log
+
+# ------------------------------
+# Miscellaneous IDE configs
+# ------------------------------
+*.xml
+modules.xml
+misc.xml
+vcs.xml
+/shelf/
+/workspace.xml

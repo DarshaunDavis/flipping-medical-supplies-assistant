@@ -1,6 +1,5 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,12 +14,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 
 @Composable
 fun HomeScreen(
@@ -33,20 +29,6 @@ fun HomeScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Logo at top
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.fmsalogo),
-                contentDescription = "App logo",
-                modifier = Modifier.size(120.dp)
-            )
-        }
-
         // Search bar
         OutlinedTextField(
             value = query,
@@ -80,19 +62,8 @@ fun HomeScreen(
                 HorizontalDivider()
             }
         }
-
-        // Banner ad placeholder
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Banner Ad Placeholder")
-        }
     }
 }
-
 
 @Composable
 fun BottomNavigationBar(navController: NavController) {

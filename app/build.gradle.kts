@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.mpandroidchart)
 
     // Firebase BOM & Realtime Database KTX via version catalog
     implementation(platform(libs.firebase.bom))

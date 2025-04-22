@@ -33,7 +33,11 @@ class HomeRepository {
                     val prodObj = catObj.getJSONObject(barcode)
                     val desc = prodObj.optString("description", null)
                     if (!desc.isNullOrBlank()) {
-                        list += Product(barcode = barcode, description = desc, category = category)
+                        list += Product(
+                            barcode = barcode,
+                            description = desc,
+                            category = category
+                        )
                     }
                 }
             }
@@ -45,5 +49,44 @@ class HomeRepository {
         }
         close()
         awaitClose { /* nothing to do */ }
+    }
+
+    /**
+     * Fetches a product’s last‑updated date and the last 10 monthly prices.
+     */
+    suspend fun getPriceHistory(category: String, barcode: String): PriceHistory = withContext(Dispatchers.IO) {
+        // Replace spaces with %20 so they match your RTDB keys
+        val cat  = category.replace(" ", "%20")
+        val code = barcode.replace(" ", "%20")
+
+        // 1) last‑updated for category
+        val luUrl = "https://test-strip-marketplace-default-rtdb.firebaseio.com/last%20updated/$cat.json"
+        val lastUpdated = (URL(luUrl).openConnection() as HttpURLConnection).run {
+            inputStream.bufferedReader().use { it.readText().trim('"') }
+        }
+
+        // 2) price map for barcode
+        val pricesUrl = "https://test-strip-marketplace-default-rtdb.firebaseio.com/barcodes/$cat/$code/Strip%20Flip.json"
+        val rawPrices = (URL(pricesUrl).openConnection() as HttpURLConnection).run {
+            inputStream.bufferedReader().use { it.readText().trim() }
+        }
+
+        // 3) parse into floats
+        val prices = if (rawPrices == "null" || rawPrices.isEmpty()) {
+            emptyList()
+        } else {
+            JSONObject(rawPrices).let { obj ->
+                (1..10).mapNotNull { i ->
+                    obj.optString("price$i", null)?.toFloatOrNull()
+                }
+            }
+        }
+
+        // 4) return model (description filled in by ViewModel)
+        PriceHistory(
+            description = "",
+            lastUpdated = lastUpdated,
+            prices      = prices
+        )
     }
 }

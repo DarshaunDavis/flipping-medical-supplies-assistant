@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -13,29 +14,32 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.PriceHistory
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
 
-/**
- * Displays the Home screen with a logo, search filter, and product list.
- * Tapping a product opens a placeholder popup.
- */
 @Composable
 fun HomeScreen(
     products: List<Product>,
     query: String,
     onQueryChange: (String) -> Unit
 ) {
-    // Local state to track which product was tapped
+    // 1) ViewModel & state
+    val vm: HomeViewModel = viewModel()
+    val ph: PriceHistory? by vm.priceHistory.collectAsState()
+
+    // 2) Local UI state
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
-    // Filter products based on query
+    // 3) Filter logic
     val filtered = if (query.isBlank()) products
-    else products.filter { it.description.startsWith(query, ignoreCase = true) }
+    else products.filter {
+        it.description.startsWith(query, ignoreCase = true)
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Search field
@@ -65,41 +69,29 @@ fun HomeScreen(
                     text = product.description,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { selectedProduct = product }
+                        .clickable {
+                            selectedProduct = product
+                            vm.loadPriceHistory(product.category, product.barcode)
+                        }
                         .padding(16.dp)
                 )
-                HorizontalDivider()
+                Divider()
             }
         }
     }
 
-    // Popup dialog when an item is clicked
+    // 4) Popup when both a product is selected and history has loaded
     selectedProduct?.let { product ->
-        AlertDialog(
-            onDismissRequest = { selectedProduct = null },
-            title = { Text(text = product.description) },
-            text = { Text("Price chart will go here…") },
-            confirmButton = {
-                TextButton(onClick = { selectedProduct = null }) {
-                    Text("OK")
+        ph?.let { history ->
+            PriceHistoryDialog(
+                title       = product.description,
+                lastUpdated = history.lastUpdated,
+                prices      = history.prices,
+                onDismiss   = {
+                    vm.clearPriceHistory()
+                    selectedProduct = null
                 }
-            }
-        )
+            )
+        }
     }
-}
-
-@Composable
-@Preview(showBackground = true, widthDp = 320, heightDp = 480)
-fun HomeScreenPreview() {
-    val sampleProducts = listOf(
-        Product("301937080500","Contour 50 count","Test Strips"),
-        Product("365702408104","AccuChek Aviva Plus 100 count","Test Strips"),
-        Product("086270077010","Dexcom G7 Sensor","Devices")
-    )
-    var q by remember { mutableStateOf("") }
-    HomeScreen(
-        products = sampleProducts,
-        query = q,
-        onQueryChange = { q = it }
-    )
 }

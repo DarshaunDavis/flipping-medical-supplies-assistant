@@ -64,10 +64,7 @@ fun AppNavHost() {
                         HomeScreen(
                             products      = products,
                             query         = query,
-                            onQueryChange = { vm.onQueryChanged(it) },
-                            onProductClick = { product ->
-                                // TODO: launch chart popup for `product`
-                            }
+                            onQueryChange = { vm.onQueryChanged(it) }
                         )
                     }
                     composable("scan") {

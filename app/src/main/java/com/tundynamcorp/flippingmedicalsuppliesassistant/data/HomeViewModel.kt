@@ -19,7 +19,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val filteredProducts: StateFlow<List<Product>> =
         combine(_products, _query) { list, q ->
             if (q.isBlank()) list else list.filter {
-                it.description.contains(q, ignoreCase = true)
+                it.description.startsWith(q, ignoreCase = true)
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

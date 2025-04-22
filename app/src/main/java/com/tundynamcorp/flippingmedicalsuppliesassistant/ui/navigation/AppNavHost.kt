@@ -15,6 +15,10 @@ import androidx.navigation.compose.rememberNavController
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigationBar
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 
 @Composable
 fun AppNavHost() {
@@ -28,7 +32,7 @@ fun AppNavHost() {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            //  Persistent Logo
+            // Persistent Logo
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -50,9 +54,20 @@ fun AppNavHost() {
                     modifier = Modifier.fillMaxSize()
                 ) {
                     composable("home") {
+                        // 1) Get your ViewModel
+                        val vm: HomeViewModel = viewModel()
+                        // 2) Observe the live data
+                        val query by vm.query.collectAsState()
+                        val products by vm.filteredProducts.collectAsState()
+
+                        // 3) Feed into HomeScreen
                         HomeScreen(
-                            products = emptyList(), // TODO: wire real data
-                            onProductClick = { /* TODO */ }
+                            products      = products,
+                            query         = query,
+                            onQueryChange = { vm.onQueryChanged(it) },
+                            onProductClick = { product ->
+                                // TODO: launch chart popup for `product`
+                            }
                         )
                     }
                     composable("scan") {

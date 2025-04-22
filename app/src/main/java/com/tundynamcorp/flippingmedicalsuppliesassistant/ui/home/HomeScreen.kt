@@ -4,44 +4,51 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
 
+/**
+ * Displays the Home screen with a logo, search filter, and product list.
+ * @param products List of products to display
+ * @param query Current search query
+ * @param onQueryChange Callback when the search text changes
+ * @param onProductClick Callback when a product is tapped
+ */
 @Composable
 fun HomeScreen(
-    products: List<String>,
-    onProductClick: (String) -> Unit
+    products: List<Product>,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onProductClick: (Product) -> Unit
 ) {
-    var query by remember { mutableStateOf("") }
-    val filtered = remember(query, products) {
-        products.filter { it.contains(query, ignoreCase = true) }
-    }
+    // Filter products based on query
+    val filtered = if (query.isBlank()) products
+    else products.filter { it.description.contains(query, ignoreCase = true) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search bar
+        // Search field
         OutlinedTextField(
             value = query,
-            onValueChange = { query = it },
+            onValueChange = onQueryChange,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             placeholder = { Text("Search products…") },
-            leadingIcon = { Icon(Icons.Outlined.Search, null) },
+            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
-                    IconButton(onClick = { query = "" }) {
-                        Icon(Icons.Default.Close, null)
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(Icons.Default.Close, contentDescription = null)
                     }
                 }
             }
@@ -49,38 +56,35 @@ fun HomeScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Scroll list
+        // Product list
         LazyColumn(modifier = Modifier.weight(1f)) {
-            items(filtered) { name ->
+            items(filtered) { product ->
                 Text(
-                    text = name,
+                    text = product.description,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onProductClick(name) }
+                        .clickable { onProductClick(product) }
                         .padding(16.dp)
                 )
-                HorizontalDivider()
+                Spacer(Modifier.height(1.dp))
             }
         }
     }
 }
 
+@Preview(showBackground = true, widthDp = 320, heightDp = 640)
 @Composable
-fun BottomNavigationBar(navController: NavController) {
-    val items = listOf(
-        "home" to Icons.Default.Home,
-        "scan" to Icons.Default.QrCodeScanner,
-        "invoice" to Icons.AutoMirrored.Filled.ReceiptLong,
-        "admin" to Icons.Outlined.AdminPanelSettings,
-        "settings" to Icons.Default.Settings
+fun HomeScreenPreview() {
+    val sampleProducts = listOf(
+        Product(barcode = "301937080500", description = "Contour 50 count", category = "Test Strips"),
+        Product(barcode = "365702408104", description = "AccuChek Aviva Plus 100 count", category = "Test Strips"),
+        Product(barcode = "086270077010", description = "Dexcom G7 Sensor", category = "Devices")
     )
-    NavigationBar {
-        items.forEach { (route, icon) ->
-            NavigationBarItem(
-                icon = { Icon(icon, null) },
-                selected = false, // you can wire up NavBackStackEntry for real selection
-                onClick = { navController.navigate(route) }
-            )
-        }
-    }
+    HomeScreen(
+        products = sampleProducts,
+        query = "",
+        onQueryChange = {},
+        onProductClick = {}
+    )
 }
+

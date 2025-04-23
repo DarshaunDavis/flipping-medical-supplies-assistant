@@ -1,4 +1,4 @@
-[![Build Status](https://img.shields.io/github/actions/workflow/status/DarshaunDavis/flipping-medical-supplies-assistant/android.yml)]()
+![Build Status](https://github.com/DarshaunDavis/flipping-medical-supplies-assistant/actions/workflows/android.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 # Flipping Medical Supplies Assistant

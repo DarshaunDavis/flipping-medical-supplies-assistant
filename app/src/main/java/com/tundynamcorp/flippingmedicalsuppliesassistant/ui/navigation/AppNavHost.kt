@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.admin.AdminScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigationBar
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.getValue
@@ -74,7 +75,7 @@ fun AppNavHost() {
                         /* TODO: InvoiceScreen(navController) */
                     }
                     composable("admin") {
-                        /* TODO: AdminScreen(navController) */
+                        AdminScreen()
                     }
                     composable("settings") {
                         /* TODO: SettingsScreen(navController) */

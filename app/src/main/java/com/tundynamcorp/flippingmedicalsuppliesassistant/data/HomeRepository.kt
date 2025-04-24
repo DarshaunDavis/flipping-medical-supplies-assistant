@@ -31,8 +31,8 @@ class HomeRepository {
                 val catObj = root.getJSONObject(category)
                 catObj.keys().forEach { barcode ->
                     val prodObj = catObj.getJSONObject(barcode)
-                    val desc = prodObj.optString("description", null)
-                    if (!desc.isNullOrBlank()) {
+                    val desc = prodObj.optString("description", "")
+                    if (desc.isNotBlank()) {
                         list += Product(
                             barcode = barcode,
                             description = desc,
@@ -73,14 +73,15 @@ class HomeRepository {
 
         // 3) parse into floats
         val prices = if (rawPrices == "null" || rawPrices.isEmpty()) {
-            emptyList()
-        } else {
+                        emptyList()
+            } else {
             JSONObject(rawPrices).let { obj ->
-                (1..10).mapNotNull { i ->
-                    obj.optString("price$i", null)?.toFloatOrNull()
-                }
-            }
-        }
+                            (1..10).mapNotNull { i ->
+                               // always returns a String, so toFloatOrNull() is enough
+                                obj.optString("price$i", "").toFloatOrNull()
+                            }
+                        }
+                   }
 
         // 4) return model (description filled in by ViewModel)
         PriceHistory(

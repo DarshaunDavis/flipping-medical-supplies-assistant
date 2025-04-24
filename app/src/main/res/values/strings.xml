@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Flipping Medical Supplies Assistant</string>
+    <string name="lislal_logo">Lislal Logo</string>
+    <string name="test_strip_marketplace_logo">Test Strip Marketplace Logo</string>
 </resources>

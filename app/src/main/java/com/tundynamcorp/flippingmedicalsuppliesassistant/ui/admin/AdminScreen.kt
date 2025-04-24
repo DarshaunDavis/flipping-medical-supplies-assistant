@@ -1,4 +1,3 @@
-// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/admin/AdminScreen.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.admin
 
 import androidx.compose.foundation.layout.*
@@ -10,6 +9,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminViewModel
+import androidx.compose.material3.MenuAnchorType
 
 @Composable
 fun AdminScreen(
@@ -33,9 +33,9 @@ fun AdminScreen(
 
         // --- Tab content ---
         when (selectedTab) {
-            0 -> ProfitMarginTab(margins, onSubmit = { cat, pct ->
-                viewModel.updateMargin(cat, pct)
-            }
+            0 -> ProfitMarginTab(
+                margins   = margins,
+                onSubmit  = { cat, pct -> viewModel.updateMargin(cat, pct) }
             )
             1 -> PricesTab()
             2 -> ProductsTab()
@@ -50,11 +50,11 @@ private fun ProfitMarginTab(
     onSubmit: (category: String, percent: Double) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
-    val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
+    val categories   = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
 
-    var expanded by remember { mutableStateOf(false) }
-    var selectedCategory by remember { mutableStateOf<String?>(null) }
-    var input by remember { mutableStateOf("") }
+    var expanded          by remember { mutableStateOf(false) }
+    var selectedCategory  by remember { mutableStateOf<String?>(null) }
+    var input             by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -65,7 +65,7 @@ private fun ProfitMarginTab(
         // Current margins row
         Text("Current Profit Margins", style = MaterialTheme.typography.titleLarge)
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier             = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             margins.forEach { (category, pct) ->
@@ -76,59 +76,64 @@ private fun ProfitMarginTab(
             }
         }
 
-        // Form
+        // Form heading
         Text("Set Profit Margin (%)", style = MaterialTheme.typography.titleMedium)
 
+        // Category dropdown
         ExposedDropdownMenuBox(
-            expanded = expanded,
+            expanded         = expanded,
             onExpandedChange = {
                 if (!expanded) focusManager.clearFocus()
                 expanded = !expanded
             }
         ) {
             TextField(
-                value = selectedCategory.orEmpty(),
+                value         = selectedCategory.orEmpty(),
                 onValueChange = { /* read-only */ },
-                readOnly = true,
-                placeholder = { Text("Select Category") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                modifier = Modifier
+                readOnly      = true,
+                placeholder   = { Text("Select Category") },
+                trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier      = Modifier
                     .fillMaxWidth()
-                    .menuAnchor()  // ensures the menu is anchored to this field
+                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable) // ← updated
             )
             ExposedDropdownMenu(
-                expanded = expanded,
+                expanded         = expanded,
                 onDismissRequest = { expanded = false }
             ) {
                 categories.forEach { cat ->
                     DropdownMenuItem(
-                        text = { Text(cat) },
+                        text    = { Text(cat) },
                         onClick = {
                             selectedCategory = cat
-                            expanded = false
+                            expanded         = false
                         }
                     )
                 }
             }
         }
 
+        // Profit input
         OutlinedTextField(
-            value = input,
+            value         = input,
             onValueChange = { input = it.filter(Char::isDigit) },
-            label = { Text("Enter Profit Margin") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            label         = { Text("Enter Profit Margin") },
+            singleLine    = true,
+            modifier      = Modifier.fillMaxWidth()
         )
 
+        // Submit button
         Button(
             onClick = {
-                selectedCategory?.let { cat ->
-                    input.toDoubleOrNull()?.let { pct ->
-                        onSubmit(cat, pct)
-                        selectedCategory = null
-                        input = ""
+                selectedCategory
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { cat ->
+                        input.toDoubleOrNull()?.let { pct ->
+                            onSubmit(cat, pct)
+                            selectedCategory = null
+                            input            = ""
+                        }
                     }
-                }
             },
             modifier = Modifier.align(Alignment.End)
         ) {
@@ -137,5 +142,5 @@ private fun ProfitMarginTab(
     }
 }
 
-@Composable private fun PricesTab() { /* … */ }
-@Composable private fun ProductsTab() { /* … */ }
+@Composable private fun PricesTab()    { /* … */ }
+@Composable private fun ProductsTab()  { /* … */ }

@@ -1,14 +1,16 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.splash
 
+import android.annotation.SuppressLint
+import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 
+@SuppressLint("AppLaunch", "CustomSplashScreen")
 class FirstSplashActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,12 +51,13 @@ class FirstSplashActivity : AppCompatActivity() {
 
         fadeOut.setAnimationListener(object: Animation.AnimationListener {
             override fun onAnimationEnd(a: Animation?) {
-                // explicitly hide the view so it never reappears
-                splashImage.visibility = View.GONE
-
-                // then launch next screen
-                startActivity(Intent(this@FirstSplashActivity, SecondSplashActivity::class.java))
-                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                val intent = Intent(this@FirstSplashActivity, SecondSplashActivity::class.java)
+                         val opts = ActivityOptions.makeCustomAnimation(
+                        this@FirstSplashActivity,
+                         android.R.anim.fade_in,
+                         android.R.anim.fade_out
+                       )
+                startActivity(intent, opts.toBundle())
                 finish()
             }
             override fun onAnimationStart(a: Animation?){ }

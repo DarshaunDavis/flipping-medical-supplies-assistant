@@ -11,7 +11,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Product list & search **/
     private val _products = MutableStateFlow<List<Product>>(emptyList())
-    val products: StateFlow<List<Product>> = _products
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query

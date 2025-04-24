@@ -66,6 +66,9 @@ dependencies {
     // Core Firebase KTX (provides com.google.firebase.ktx.Firebase)
     implementation(libs.firebase.common.ktx)
     implementation(libs.google.firebase.database.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.activity)
+    implementation(libs.androidx.constraintlayout)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

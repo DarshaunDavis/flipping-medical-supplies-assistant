@@ -11,14 +11,18 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FlippingMedicalSuppliesAssistant">
         <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:theme="@style/Theme.FlippingSplash">
+            android:name=".splash.FirstSplashActivity"
+            android:theme="@style/Theme.FlippingSplash"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity
+            android:name=".splash.SecondSplashActivity"
+            android:theme="@style/Theme.FlippingSplash"/>
+        <activity android:name=".MainActivity" />
     </application>
 
 </manifest>

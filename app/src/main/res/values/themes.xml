@@ -1,15 +1,23 @@
-<!-- res/values/themes.xml -->
 <resources>
-    <!-- Your app’s default theme, now based on Material3 -->
+    <!-- Your app’s default theme -->
     <style name="Theme.FlippingMedicalSuppliesAssistant"
         parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- if you have a branded app background color, set it here -->
+        <item name="android:windowBackground">@android:color/white</item>
     </style>
 
-    <!-- Splash theme -->
+    <!-- Splash theme: no preview snapshot, solid bg, our first logo -->
     <style name="Theme.FlippingSplash"
         parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="windowSplashScreenBackground">@android:color/transparent</item>
+        <!-- 1) kill the default snapshot of your launcher icon -->
+        <item name="android:windowDisablePreview">true</item>
+        <!-- 2) background for the window while your layout/compose loads -->
+        <item name="android:windowBackground">@android:color/white</item>
+        <!-- 3) if you ever use installSplashScreen() APIs, this supplies the icon -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/lislal_logo</item>
+        <!-- 4) same solid background during the Android12+ splash -->
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <!-- 5) fall back to your normal theme after that window-splash -->
         <item name="postSplashScreenTheme">@style/Theme.FlippingMedicalSuppliesAssistant</item>
     </style>
 </resources>

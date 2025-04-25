@@ -28,6 +28,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 .catch { /* log or handle */ }
                 .collect { list -> _products.value = list }
         }
+        // load buyer list
+        viewModelScope.launch {
+            repo.getBuyers()
+                .catch { /* log */ }
+                .collect { _buyers.value = it }
+        }
     }
 
     fun onQueryChanged(new: String) {
@@ -37,6 +43,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     /** Price‑history state **/
     private val _priceHistory = MutableStateFlow<PriceHistory?>(null)
     val priceHistory: StateFlow<PriceHistory?> = _priceHistory
+
+    /** — Buyers — **/
+    private val _buyers = MutableStateFlow<List<String>>(emptyList())
+    val buyers: StateFlow<List<String>> = _buyers
 
     /** Kick off loading the history for one product */
     fun loadPriceHistory(category: String, barcode: String) {

@@ -7,12 +7,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.MenuAnchorType
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductsTab() {
+fun ProductsTab(
+    homeViewModel: HomeViewModel = viewModel()
+) {
+    // 1) Get dynamic buyers from the ViewModel
+    val buyers by homeViewModel.buyers.collectAsState(initial = emptyList())
+
+    // 2) Static categories
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
-    val buyers     = listOf("Strip Flip", "Acme Buyer", "Other Buyer")
 
     // UI state holders
     val visibilityMap    = remember { mutableStateMapOf<String, Boolean>() }
@@ -33,19 +41,22 @@ fun ProductsTab() {
         categories.forEach { category ->
             // Each category in its own Card for visual separation
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier  = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    modifier           = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     // Category header + switch
                     Row(
-                        modifier            = Modifier.fillMaxWidth(),
+                        modifier             = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(category, style = MaterialTheme.typography.titleMedium)
                         Switch(
-                            checked        = visibilityMap[category] == true,
-                            onCheckedChange= { visibilityMap[category] = it }
+                            checked         = visibilityMap[category] == true,
+                            onCheckedChange = { visibilityMap[category] = it }
                         )
                     }
 
@@ -61,12 +72,12 @@ fun ProductsTab() {
                         onExpandedChange = { expandedCategory = if (it) category else null }
                     ) {
                         TextField(
-                            value            = selectedBuyerMap[category] ?: "",
-                            onValueChange    = { /* read-only */ },
-                            readOnly         = true,
-                            placeholder      = { Text("Select Buyer") },
-                            trailingIcon     = { ExposedDropdownMenuDefaults.TrailingIcon(expandedCategory == category) },
-                            modifier         = Modifier
+                            value         = selectedBuyerMap[category] ?: "",
+                            onValueChange = { /* read-only */ },
+                            readOnly      = true,
+                            placeholder   = { Text("Select Buyer") },
+                            trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expandedCategory == category) },
+                            modifier      = Modifier
                                 .fillMaxWidth()
                                 .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
                         )

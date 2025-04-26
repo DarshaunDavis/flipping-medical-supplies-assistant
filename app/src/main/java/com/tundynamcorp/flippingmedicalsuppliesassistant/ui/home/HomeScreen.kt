@@ -36,11 +36,11 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .padding(16.dp),
             placeholder = { Text("Search products…") },
-            leadingIcon = { Icon(Icons.Outlined.Search, null) },
+            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
                     IconButton(onClick = { onQueryChange("") }) {
-                        Icon(Icons.Filled.Close, null)
+                        Icon(Icons.Filled.Close, contentDescription = null)
                     }
                 }
             }

@@ -12,7 +12,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * @param editable      whether to enable per-price clicks and show Reset button
+ * Displays a 2×5 grid of historical prices with month labels.
+ *
+ * @param editable      if true, each price cell is clickable and a “Reset” button is shown
  * @param onPriceClick  invoked with the index 0..9 when a price cell is clicked (only if editable)
  * @param onReset       invoked when the Reset button is tapped (only shown if editable)
  */
@@ -26,7 +28,7 @@ fun PriceHistoryDialog(
     onReset: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
-    // Parse dates
+    // 1) parse the lastUpdated date
     val inputFmt  = SimpleDateFormat("M/d/yyyy", Locale.US)
     val outputFmt = SimpleDateFormat("MM/yy", Locale.US)
     val baseDate: Date = try {
@@ -35,7 +37,7 @@ fun PriceHistoryDialog(
         Date()
     }
 
-    // Build labels: index 0 → +11 months … index 9 → +2 months
+    // 2) build the 10 month labels (index 0 = baseDate +11mo … index 9 = baseDate +2mo)
     val dateLabels = List(prices.size) { i ->
         Calendar.getInstance().apply {
             time = baseDate
@@ -48,15 +50,17 @@ fun PriceHistoryDialog(
         title = { Text(title) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Top row: dates 0..4
+                // top row of labels (0..4)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    dateLabels.take(5).forEach { Text(it, modifier = Modifier.padding(4.dp)) }
+                    dateLabels.take(5).forEach { month ->
+                        Text(month, Modifier.padding(4.dp))
+                    }
                 }
                 Spacer(Modifier.height(4.dp))
-                // Top row: prices 0..4
+                // top row of prices (0..4)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -74,15 +78,17 @@ fun PriceHistoryDialog(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                // Bottom row: dates 5..9
+                // bottom row of labels (5..9)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    dateLabels.drop(5).forEach { Text(it, modifier = Modifier.padding(4.dp)) }
+                    dateLabels.drop(5).forEach { month ->
+                        Text(month, Modifier.padding(4.dp))
+                    }
                 }
                 Spacer(Modifier.height(4.dp))
-                // Bottom row: prices 5..9
+                // bottom row of prices (5..9)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -103,6 +109,7 @@ fun PriceHistoryDialog(
             }
         },
         confirmButton = {
+            // when editable, show Reset first
             if (editable) {
                 TextButton(onClick = onReset) {
                     Text("Reset")

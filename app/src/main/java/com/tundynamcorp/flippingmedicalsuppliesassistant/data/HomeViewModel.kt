@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = HomeRepository()
     private val adminRepo  = AdminRepository(app)
+    private val overrideRepo = PriceOverrideRepository(app)
 
     /** Products & search **/
     private val _products = MutableStateFlow<List<Product>>(emptyList())
@@ -47,8 +48,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun loadPriceHistory(category: String, barcode: String) {
         viewModelScope.launch {
-            val ph = repo.getPriceHistory(category, barcode)
-            _priceHistory.value = ph
+            _priceHistory.value = repo.getPriceHistory(category, barcode)
         }
     }
 
@@ -60,4 +60,18 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val buyersByCategory: StateFlow<Map<String, List<String>>> =
         repo.getBuyersByCategory()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Price-override helpers **/
+    fun overridePrice(category: String, barcode: String, index: Int, newPrice: Int) {
+        viewModelScope.launch {
+            // we use barcode as the key – adjust if you need category+barcode composite
+            overrideRepo.setOverride(barcode, index, newPrice)
+        }
+    }
+
+    fun resetOverrides(category: String, barcode: String) {
+        viewModelScope.launch {
+            overrideRepo.clearOverrides(barcode)
+        }
+    }
 }

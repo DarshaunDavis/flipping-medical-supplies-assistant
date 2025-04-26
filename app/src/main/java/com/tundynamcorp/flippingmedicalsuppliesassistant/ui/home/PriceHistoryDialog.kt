@@ -1,5 +1,6 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -15,7 +16,10 @@ fun PriceHistoryDialog(
     title: String,
     lastUpdated: String,    // e.g. "10/22/2024"
     prices: List<Float>,    // exactly 10 values: price1 (highest) … price10 (lowest)
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    editable: Boolean = false,
+    onPriceClick: (index: Int) -> Unit = {},
+    onReset: () -> Unit = {}
 ) {
     // Parse and build the 10 month labels, furthest first
     val inputFmt  = SimpleDateFormat("M/d/yyyy", Locale.US)
@@ -72,8 +76,14 @@ fun PriceHistoryDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    prices.drop(5).forEach { price ->
-                        Text("$${price.toInt()}", modifier = Modifier.padding(4.dp))
+                    prices.drop(5).forEachIndexed { idx, price ->
+                        val realIdx = idx + 5
+                        Text(
+                            text = "$${price.toInt()}",
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .let { if (editable) it.clickable { onPriceClick(realIdx) } else it }
+                        )
                     }
                 }
             }
@@ -81,6 +91,14 @@ fun PriceHistoryDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("OK")
+            }
+        },
+        // only show Reset when editable
+        dismissButton = {
+            if (editable) {
+                TextButton(onClick = onReset) {
+                    Text("Reset")
+                }
             }
         }
     )

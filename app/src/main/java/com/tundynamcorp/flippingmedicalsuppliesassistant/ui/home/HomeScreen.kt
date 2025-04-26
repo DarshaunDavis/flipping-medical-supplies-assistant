@@ -4,51 +4,47 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.PriceHistory
-import com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
 import kotlin.math.roundToInt
 
 /**
- * Displays the Home screen with a search filter, product list, and profit-adjusted price popup.
+ * Displays the Home screen with a search filter, product list,
+ * and profit-adjusted price popup.
+ *
+ * @param onProductClick invoked when a row is tapped; default = no-op
  */
 @Composable
 fun HomeScreen(
     products: List<Product>,
     query: String,
-    onQueryChange: (String) -> Unit
+    onQueryChange: (String) -> Unit,
+    onProductClick: (Product) -> Unit = {}
 ) {
-    // 1) ViewModels & state
     val homeVm: HomeViewModel = viewModel()
     val adminVm: AdminViewModel = viewModel()
 
     val ph: PriceHistory? by homeVm.priceHistory.collectAsState()
     val margins by adminVm.margins.collectAsState()
 
-    // 2) Local UI state
-    var selectedProduct by remember { mutableStateOf<Product?>(null) }
+    // track which product was tapped here (for the Home tab)
+    var localSelection by remember { mutableStateOf<Product?>(null) }
 
-    // 3) Filter logic
+    // filter logic
     val filtered = if (query.isBlank()) products
-    else products.filter {
-        it.description.startsWith(query, ignoreCase = true)
-    }
+    else products.filter { it.description.startsWith(query, ignoreCase = true) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search field
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
@@ -68,42 +64,41 @@ fun HomeScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Product list
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(filtered) { product ->
                 Text(
                     text = product.description,
+                    style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            selectedProduct = product
+                            // let the parent handle it...
+                            onProductClick(product)
+                            // ...and also our local Home-dialog
+                            localSelection = product
                             homeVm.loadPriceHistory(product.category, product.barcode)
                         }
                         .padding(16.dp)
                 )
-                HorizontalDivider()
+                Divider()
             }
         }
     }
 
-    // 4) Popup when an item is clicked AND history loaded
-    selectedProduct?.let { product ->
+    // If nobody else handled the click, show our built-in Home dialog:
+    localSelection?.let { product ->
         ph?.let { history ->
-            // pull margin% for this category (default 0)
             val marginPct = margins[product.category] ?: 0.0
-            // apply margin to each raw price, round-half-up to nearest dollar
             val adjusted = history.prices.map { raw ->
-                ((raw * (1 - marginPct / 100))
-                    .roundToInt()).toFloat()
+                ((raw * (1 - marginPct / 100)).roundToInt()).toFloat()
             }
-
             PriceHistoryDialog(
                 title       = product.description,
                 lastUpdated = history.lastUpdated,
                 prices      = adjusted,
                 onDismiss   = {
                     homeVm.clearPriceHistory()
-                    selectedProduct = null
+                    localSelection = null
                 }
             )
         }

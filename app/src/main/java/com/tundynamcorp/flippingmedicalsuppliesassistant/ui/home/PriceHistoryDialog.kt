@@ -11,17 +11,22 @@ import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * @param editable      whether to enable per-price clicks and show Reset button
+ * @param onPriceClick  invoked with the index 0..9 when a price cell is clicked (only if editable)
+ * @param onReset       invoked when the Reset button is tapped (only shown if editable)
+ */
 @Composable
 fun PriceHistoryDialog(
     title: String,
     lastUpdated: String,    // e.g. "10/22/2024"
     prices: List<Float>,    // exactly 10 values: price1 (highest) … price10 (lowest)
-    onDismiss: () -> Unit,
     editable: Boolean = false,
     onPriceClick: (index: Int) -> Unit = {},
-    onReset: () -> Unit = {}
+    onReset: () -> Unit = {},
+    onDismiss: () -> Unit
 ) {
-    // Parse and build the 10 month labels, furthest first
+    // Parse dates
     val inputFmt  = SimpleDateFormat("M/d/yyyy", Locale.US)
     val outputFmt = SimpleDateFormat("MM/yy", Locale.US)
     val baseDate: Date = try {
@@ -30,9 +35,7 @@ fun PriceHistoryDialog(
         Date()
     }
 
-    //    Build labels so that:
-    //    index 0 → baseDate + 11 months  (label above price1)
-    //    index 9 → baseDate +  2 months  (label above price10)
+    // Build labels: index 0 → +11 months … index 9 → +2 months
     val dateLabels = List(prices.size) { i ->
         Calendar.getInstance().apply {
             time = baseDate
@@ -45,7 +48,7 @@ fun PriceHistoryDialog(
         title = { Text(title) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Top row: labels for price1..price5 (i=0..4)
+                // Top row: dates 0..4
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -53,17 +56,25 @@ fun PriceHistoryDialog(
                     dateLabels.take(5).forEach { Text(it, modifier = Modifier.padding(4.dp)) }
                 }
                 Spacer(Modifier.height(4.dp))
-                // Top row of prices (original order)
+                // Top row: prices 0..4
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    prices.take(5).forEach { price ->
-                        Text("$${price.toInt()}", modifier = Modifier.padding(4.dp))
+                    prices.take(5).forEachIndexed { idx, price ->
+                        Text(
+                            text = "$${price.toInt()}",
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .then(
+                                    if (editable) Modifier.clickable { onPriceClick(idx) }
+                                    else Modifier
+                                )
+                        )
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                // Bottom row: labels for price6..price10 (i=5..9)
+                // Bottom row: dates 5..9
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -71,34 +82,34 @@ fun PriceHistoryDialog(
                     dateLabels.drop(5).forEach { Text(it, modifier = Modifier.padding(4.dp)) }
                 }
                 Spacer(Modifier.height(4.dp))
-                // Bottom row of prices (original order)
+                // Bottom row: prices 5..9
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    prices.drop(5).forEachIndexed { idx, price ->
-                        val realIdx = idx + 5
+                    prices.drop(5).forEachIndexed { dropIdx, price ->
+                        val idx = dropIdx + 5
                         Text(
                             text = "$${price.toInt()}",
                             modifier = Modifier
                                 .padding(4.dp)
-                                .let { if (editable) it.clickable { onPriceClick(realIdx) } else it }
+                                .then(
+                                    if (editable) Modifier.clickable { onPriceClick(idx) }
+                                    else Modifier
+                                )
                         )
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("OK")
-            }
-        },
-        // only show Reset when editable
-        dismissButton = {
             if (editable) {
                 TextButton(onClick = onReset) {
                     Text("Reset")
                 }
+            }
+            TextButton(onClick = onDismiss) {
+                Text("OK")
             }
         }
     )

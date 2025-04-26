@@ -1,3 +1,4 @@
+// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/admin/ProductsTab.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.admin
 
 import androidx.compose.foundation.layout.*
@@ -7,7 +8,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.MenuAnchorType
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 
@@ -16,10 +16,8 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 fun ProductsTab(
     homeViewModel: HomeViewModel = viewModel()
 ) {
-    // 1) Get dynamic buyers from the ViewModel
-    val buyers by homeViewModel.buyers.collectAsState(initial = emptyList())
+    val buyersByCategory by homeViewModel.buyersByCategory.collectAsState(initial = emptyMap())
 
-    // 2) Static categories
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
 
     // UI state holders
@@ -36,21 +34,21 @@ fun ProductsTab(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         categories.forEach { category ->
-            // Each category in its own Card for visual separation
+            // Card per category
             Card(
-                modifier  = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
                     modifier           = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Category header + switch
+                    // Header + switch
                     Row(
-                        modifier             = Modifier.fillMaxWidth(),
+                        modifier            = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(category, style = MaterialTheme.typography.titleMedium)
@@ -60,44 +58,51 @@ fun ProductsTab(
                         )
                     }
 
-                    // Status text
                     Text(
                         text  = if (visibilityMap[category] == true) "Status: Displayed" else "Status: Hidden",
                         style = MaterialTheme.typography.bodySmall
                     )
 
-                    // Buyer dropdown
+                    // Buyer selector
                     ExposedDropdownMenuBox(
                         expanded         = expandedCategory == category,
                         onExpandedChange = { expandedCategory = if (it) category else null }
                     ) {
+                        val buyers = buyersByCategory[category].orEmpty()
                         TextField(
                             value         = selectedBuyerMap[category] ?: "",
-                            onValueChange = { /* read-only */ },
+                            onValueChange = {},
                             readOnly      = true,
-                            placeholder   = { Text("Select Buyer") },
+                            placeholder   = { Text(if (buyers.isEmpty()) "No buyer available" else "Select Buyer") },
                             trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expandedCategory == category) },
                             modifier      = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
+                                .menuAnchor()
                         )
                         ExposedDropdownMenu(
                             expanded         = expandedCategory == category,
                             onDismissRequest = { expandedCategory = null }
                         ) {
-                            buyers.forEach { buyer ->
+                            if (buyers.isEmpty()) {
                                 DropdownMenuItem(
-                                    text    = { Text(buyer) },
-                                    onClick = {
-                                        selectedBuyerMap[category] = buyer
-                                        expandedCategory           = null
-                                    }
+                                    text    = { Text("No buyer available") },
+                                    onClick = { /* no-op*/ },
+                                    enabled = false
                                 )
+                            } else {
+                                buyers.forEach { buyer ->
+                                    DropdownMenuItem(
+                                        text    = { Text(buyer) },
+                                        onClick = {
+                                            selectedBuyerMap[category] = buyer
+                                            expandedCategory           = null
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
 
-                    // Currently selected buyer
                     Text(
                         text  = "Using: ${selectedBuyerMap[category] ?: "—"}",
                         style = MaterialTheme.typography.bodySmall

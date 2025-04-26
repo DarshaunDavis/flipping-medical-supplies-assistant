@@ -1,3 +1,4 @@
+// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/data/HomeViewModel.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.data
 
 import android.app.Application
@@ -9,30 +10,22 @@ import kotlinx.coroutines.launch
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = HomeRepository()
 
-    /** Product list & search **/
+    /** Products & search **/
     private val _products = MutableStateFlow<List<Product>>(emptyList())
-
-    private val _query = MutableStateFlow("")
+    private val _query    = MutableStateFlow("")
     val query: StateFlow<String> = _query
 
-    val filteredProducts: StateFlow<List<Product>> =
-        combine(_products, _query) { list, q ->
-            if (q.isBlank()) list
-            else list.filter { it.description.startsWith(q, ignoreCase = true) }
+    val filteredProducts: StateFlow<List<Product>> = combine(_products, _query) { list, q ->
+        if (q.isBlank()) list else list.filter {
+            it.description.startsWith(q, ignoreCase = true)
         }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
         viewModelScope.launch {
             repo.getAllProducts()
                 .catch { /* log or handle */ }
-                .collect { list -> _products.value = list }
-        }
-        // load buyer list
-        viewModelScope.launch {
-            repo.getBuyers()
-                .catch { /* log */ }
-                .collect { _buyers.value = it }
+                .collect { _products.value = it }
         }
     }
 
@@ -40,26 +33,23 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         _query.value = new
     }
 
-    /** Price‑history state **/
+    /** Price-history **/
     private val _priceHistory = MutableStateFlow<PriceHistory?>(null)
     val priceHistory: StateFlow<PriceHistory?> = _priceHistory
 
-    /** — Buyers — **/
-    private val _buyers = MutableStateFlow<List<String>>(emptyList())
-    val buyers: StateFlow<List<String>> = _buyers
-
-    /** Kick off loading the history for one product */
     fun loadPriceHistory(category: String, barcode: String) {
         viewModelScope.launch {
-            // Assuming you’ll add this to your repo:
-            // suspend fun getPriceHistory(category: String, barcode: String): PriceHistory
             val ph = repo.getPriceHistory(category, barcode)
             _priceHistory.value = ph
         }
     }
 
-    /** Clear the dialog data */
     fun clearPriceHistory() {
         _priceHistory.value = null
     }
+
+    /** Buyers by category **/
+    val buyersByCategory: StateFlow<Map<String, List<String>>> =
+        repo.getBuyersByCategory()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 }

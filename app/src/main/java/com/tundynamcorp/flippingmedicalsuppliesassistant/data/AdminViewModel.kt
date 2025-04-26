@@ -20,10 +20,18 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 initialValue = emptyMap()
             )
 
+    /** Expose the on/off visibility map */
+    val visibility: StateFlow<Map<String, Boolean>> = repo.visibilityFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = emptyMap())
+
     /** Update one category’s margin */
     fun updateMargin(category: String, percent: Double) {
         viewModelScope.launch {
             repo.setMargin(category, percent)
         }
+    }
+
+    fun setVisibility(category: String, visible: Boolean) {
+        viewModelScope.launch { repo.setVisibility(category, visible) }
     }
 }

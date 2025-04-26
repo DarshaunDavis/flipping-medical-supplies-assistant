@@ -1,4 +1,3 @@
-// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/data/HomeViewModel.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.data
 
 import android.app.Application
@@ -9,16 +8,25 @@ import kotlinx.coroutines.launch
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = HomeRepository()
+    private val adminRepo  = AdminRepository(app)
 
     /** Products & search **/
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     private val _query    = MutableStateFlow("")
     val query: StateFlow<String> = _query
 
-    val filteredProducts: StateFlow<List<Product>> = combine(_products, _query) { list, q ->
-        if (q.isBlank()) list else list.filter {
-            it.description.startsWith(q, ignoreCase = true)
-        }
+    /** Combine products + query + visibility toggles */
+    val filteredProducts: StateFlow<List<Product>> = combine(
+        _products,
+        _query,
+        adminRepo.visibilityFlow
+    ) { products, q, visMap ->
+        products
+            .filter { (visMap[it.category] ?: true) }       // respect toggles
+            .let { list ->
+                if (q.isBlank()) list
+                else list.filter { it.description.startsWith(q, ignoreCase = true) }
+            }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {

@@ -1,3 +1,4 @@
+// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/scan/ScanScreen.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.scan
 
 import android.content.Intent
@@ -14,22 +15,27 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.google.zxing.ResultPoint
 import com.journeyapps.barcodescanner.*
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeRepository
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun ScanScreen() {
     var isScanning by remember { mutableStateOf(false) }
     var scannedCode by remember { mutableStateOf<String?>(null) }
+    var scannedDesc by remember { mutableStateOf<String?>(null) }
 
-    // Hold a reference so we can pause/resume
+    // ZXing view reference so we can pause/resume
     var barcodeView: DecoratedBarcodeView? by remember { mutableStateOf(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val repo = remember { HomeRepository() }
 
+    // Continuous callback: on first non-blank scan, save code & stop
     val callback = remember {
         object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult?) {
-                result?.text?.takeIf { it.isNotBlank() }?.let {
+                result?.text?.takeIf { it.isNotBlank() }?.let { code ->
                     if (scannedCode == null) {
-                        scannedCode = it
+                        scannedCode = code
                         isScanning = false
                         barcodeView?.pause()
                     }
@@ -39,6 +45,7 @@ fun ScanScreen() {
         }
     }
 
+    // Pause/resume ZXing view with lifecycle
     DisposableEffect(lifecycleOwner) {
         val obs = object : DefaultLifecycleObserver {
             override fun onResume(owner: LifecycleOwner) {
@@ -50,6 +57,17 @@ fun ScanScreen() {
         }
         lifecycleOwner.lifecycle.addObserver(obs)
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+
+    // Lookup product description once a code arrives
+    LaunchedEffect(scannedCode) {
+        scannedCode?.let { code ->
+            // fetch flat list and find matching barcode
+            val all = repo.getAllProducts().first()
+            scannedDesc = all.firstOrNull { it.barcode == code }
+                ?.description
+                ?: "Product not found"
+        }
     }
 
     Column(
@@ -72,9 +90,10 @@ fun ScanScreen() {
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            // 1) Button at the top
+            // 1) Scan button at the top
             Button(onClick = {
                 scannedCode = null
+                scannedDesc = null
                 isScanning = true
             }) {
                 Text(if (scannedCode == null) "Scan Barcode" else "Scan Again")
@@ -82,8 +101,8 @@ fun ScanScreen() {
 
             Spacer(Modifier.height(24.dp))
 
-            // 2) Show scanned result below
-            scannedCode?.let { code ->
+            // 2) Show looked-up description
+            scannedDesc?.let { desc ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -92,9 +111,7 @@ fun ScanScreen() {
                         Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Scanned:", style = MaterialTheme.typography.bodyMedium)
-                        Spacer(Modifier.height(8.dp))
-                        Text(code, style = MaterialTheme.typography.titleLarge)
+                        Text(desc, style = MaterialTheme.typography.titleLarge)
                     }
                 }
             }

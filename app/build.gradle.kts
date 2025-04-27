@@ -71,8 +71,13 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
 
     // Material-3 “core” + “extended” icons
-    implementation("androidx.compose.material:material-icons-core")
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.androidx.material.icons.core)
+    implementation(libs.material.icons.extended)
+
+    // ZXing barcode scanner UI
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("com.google.zxing:core:3.4.1")
+    implementation(libs.zxing.android.embedded)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

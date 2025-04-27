@@ -11,7 +11,6 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDialog
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PricesTab(
     homeViewModel: HomeViewModel = viewModel()
@@ -99,7 +98,7 @@ fun PricesTab(
                 TextButton(onClick = {
                     overrideInput.toIntOrNull()?.let { newVal ->
                         homeViewModel.overridePrice(
-                            selectedProduct!!.category,
+                            // removed category parameter
                             selectedProduct!!.barcode,
                             idx,
                             newVal

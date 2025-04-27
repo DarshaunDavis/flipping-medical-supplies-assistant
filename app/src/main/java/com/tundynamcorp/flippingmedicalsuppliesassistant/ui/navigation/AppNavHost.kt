@@ -10,67 +10,55 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.*
+
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.PriceHistory
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigationBar
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.admin.AdminScreen
-import kotlin.math.roundToInt
 
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
 
-    Scaffold(
-        bottomBar = { BottomNavigationBar(navController) }
-    ) { innerPadding ->
+    Scaffold(bottomBar = { BottomNavigationBar(navController) }) { innerPadding ->
         Column(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Persistent Logo
+            // Persistent logo
             Box(
-                modifier = Modifier
+                Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.fmsalogo),
+                    painter = painterResource(R.drawable.fmsalogo),
                     contentDescription = "App logo",
                     modifier = Modifier.size(120.dp)
                 )
             }
 
             // NavHost content
-            Box(modifier = Modifier.weight(1f)) {
-                NavHost(
-                    navController = navController,
-                    startDestination = "home",
-                    modifier = Modifier.fillMaxSize()
-                ) {
+            Box(Modifier.weight(1f)) {
+                NavHost(navController, startDestination = "home", Modifier.fillMaxSize()) {
+
                     composable("home") {
-                        // ViewModels
                         val homeVm: HomeViewModel = viewModel()
-                        val adminVm: HomeViewModel = viewModel() // assumes same scope, or use AdminViewModel if separate
-
-                        // Observed state
-                        val query    by homeVm.query.collectAsState()
+                        val query by homeVm.query.collectAsState()
                         val products by homeVm.filteredProducts.collectAsState()
-                        val ph       by homeVm.priceHistory.collectAsState()
-                        val margins  by viewModel<com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminViewModel>()
-                            .margins.collectAsState()
+                        val ph: PriceHistory? by homeVm.priceHistory.collectAsState()
 
-                        // Local dialog control
+                        // track which product is tapped
                         var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
-                        // 1) Pure list + search
+                        // 1) show pure list+search UI
                         HomeScreen(
                             products      = products,
                             query         = query,
@@ -81,18 +69,14 @@ fun AppNavHost() {
                             }
                         )
 
-                        // 2) Only one dialog, once history arrives
+                        // 2) single dialog, using exactly the VM-adjusted prices
                         selectedProduct
                             ?.takeIf { ph != null }
                             ?.let { prod ->
-                                val adjusted = ph!!.prices.map { raw ->
-                                    ((raw * (1 - (margins[prod.category] ?: 0.0) / 100))
-                                        .roundToInt()).toFloat()
-                                }
                                 PriceHistoryDialog(
                                     title       = prod.description,
                                     lastUpdated = ph!!.lastUpdated,
-                                    prices      = adjusted,
+                                    prices      = ph!!.prices,
                                     onDismiss   = {
                                         homeVm.clearPriceHistory()
                                         selectedProduct = null
@@ -101,24 +85,16 @@ fun AppNavHost() {
                             }
                     }
 
-                    composable("scan") {
-                        /* TODO: ScanScreen(navController) */
-                    }
-                    composable("invoice") {
-                        /* TODO: InvoiceScreen(navController) */
-                    }
-                    composable("admin") {
-                        AdminScreen()
-                    }
-                    composable("settings") {
-                        /* TODO: SettingsScreen(navController) */
-                    }
+                    composable("scan")    { /* TODO */ }
+                    composable("invoice") { /* TODO */ }
+                    composable("admin")   { AdminScreen() }
+                    composable("settings"){ /* TODO */ }
                 }
             }
 
             // Banner ad placeholder
             Box(
-                modifier = Modifier
+                Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 contentAlignment = Alignment.Center

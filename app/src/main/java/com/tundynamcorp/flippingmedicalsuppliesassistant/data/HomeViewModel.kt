@@ -3,11 +3,10 @@ package com.tundynamcorp.flippingmedicalsuppliesassistant.data
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeRepository
-import com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminRepository
-import com.tundynamcorp.flippingmedicalsuppliesassistant.data.PriceOverrideRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlin.math.roundToInt
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val repo         = HomeRepository()
@@ -49,7 +48,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         _query.value = new
     }
 
-    /** Price-History (with overrides applied) **/
+    /** Price-History (with margin & overrides baked in) **/
     private val _priceHistory = MutableStateFlow<PriceHistory?>(null)
     val priceHistory: StateFlow<PriceHistory?> = _priceHistory
 
@@ -58,20 +57,31 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         lastBarcode  = barcode
 
         viewModelScope.launch {
-            // 1) Fetch raw history
+            // 1) get the raw monthly prices (exactly as in DB)
             val raw = repo.getPriceHistory(category, barcode)
 
-            // 2) Grab the single-shot snapshot of all overrides
+            // 2) snapshot current overrides for this barcode
             val allOverrides    = overrideRepo.overridesFlow.first()
             val overridesForBar = allOverrides[barcode] ?: emptyMap()
 
-            // 3) Build a patched list: use override if present, else raw
-            val patchedPrices = raw.prices.mapIndexed { idx, original ->
-                overridesForBar[idx]?.toFloat() ?: original
+            // 3) grab the current margin % for this category
+            val marginPct = adminRepo
+                .marginsFlow
+                .first()[category]
+                ?: 0.0
+
+            // 4) build a single “final” list:
+            //    if override exists use it,
+            //    otherwise apply margin discount to raw
+            val finalPrices = raw.prices.mapIndexed { idx, dbPrice ->
+                overridesForBar[idx]?.toFloat()
+                    ?: ((dbPrice * (1 - marginPct / 100))
+                        .roundToInt()
+                        .toFloat())
             }
 
-            // 4) Emit a copy with overrides applied
-            _priceHistory.value = raw.copy(prices = patchedPrices)
+            // 5) emit a cloned PriceHistory with our patched numbers
+            _priceHistory.value = raw.copy(prices = finalPrices)
         }
     }
 
@@ -79,17 +89,14 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         _priceHistory.value = null
     }
 
-    /** Per-price override APIs **/
+    /** Price-override helpers **/
     fun overridePrice(category: String, barcode: String, index: Int, newPrice: Int) {
         viewModelScope.launch {
-            // Persist the override
             overrideRepo.setOverride(barcode, index, newPrice)
-
-            // Immediately patch the in-memory dialog
+            // also update in-memory immediately
             _priceHistory.value = _priceHistory.value
-                ?.copy(prices = _priceHistory.value!!.prices.mapIndexed { i, v ->
-                    if (i == index) newPrice.toFloat() else v
-                })
+                ?.copy(prices = _priceHistory.value!!.prices
+                    .mapIndexed { i, v -> if (i == index) newPrice.toFloat() else v })
         }
     }
 
@@ -98,12 +105,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         lastBarcode  = barcode
 
         viewModelScope.launch {
-            // Clear persisted overrides
             overrideRepo.clearOverrides(barcode)
-            // Re-fetch raw history (no overrides now)
+            // re-fetch raw (no overrides now, margin auto-applied)
             lastCategory?.let { cat ->
                 lastBarcode?.let { code ->
-                    _priceHistory.value = repo.getPriceHistory(cat, code)
+                    loadPriceHistory(cat, code)
                 }
             }
         }

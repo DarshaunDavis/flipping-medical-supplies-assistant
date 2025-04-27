@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
 
 /**
- * Pure list + search. Taps go out via `onProductClick`.
+ * Pure list + search. Taps go out via `onProductClick`, no internal dialogs.
  */
 @Composable
 fun HomeScreen(
@@ -28,7 +28,6 @@ fun HomeScreen(
     onProductClick: (Product) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search field
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
@@ -45,10 +44,7 @@ fun HomeScreen(
                 }
             }
         )
-
         Spacer(Modifier.height(8.dp))
-
-        // Product list
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(products) { product ->
                 Text(

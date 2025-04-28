@@ -9,7 +9,7 @@
     import androidx.compose.ui.Alignment
     import androidx.compose.ui.Modifier
     import androidx.compose.ui.platform.LocalContext
-    import androidx.compose.ui.platform.LocalLifecycleOwner
+    import androidx.lifecycle.compose.LocalLifecycleOwner
     import androidx.compose.ui.unit.dp
     import androidx.compose.ui.viewinterop.AndroidView
     import androidx.lifecycle.DefaultLifecycleObserver
@@ -19,13 +19,11 @@
     import com.journeyapps.barcodescanner.*
     import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeRepository
     import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
-    import com.tundynamcorp.flippingmedicalsuppliesassistant.data.PriceHistory
     import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
     import java.text.SimpleDateFormat
     import java.util.*
     import kotlinx.coroutines.flow.first
-    import kotlinx.coroutines.launch
-    import kotlinx.coroutines.delay
+    import androidx.compose.material3.MenuAnchorType
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -159,7 +157,7 @@
                             Text(selectedDate ?: "Select Expiration Date")
                         }
                         if (datePickerVisible) {
-                            showDatePicker(
+                            ShowDatePicker(
                                 context,
                                 onDateSelected = { y, m, d ->
                                     selectedDate = "${m + 1}/$d/$y"
@@ -189,7 +187,7 @@
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor()
+                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                             )
                             ExposedDropdownMenu(
                                 expanded = condDropdownExpanded,
@@ -250,7 +248,8 @@
                         } else {
                             Text(
                                 text = "$${resultPrice?.toInt()}",
-                                style = MaterialTheme.typography.titleLarge
+                                style = MaterialTheme.typography.displayLarge,
+                                modifier = Modifier.padding(vertical = 12.dp)
                             )
                             Spacer(Modifier.height(16.dp))
                             Text("Expiration Date: $selectedDate")
@@ -263,7 +262,7 @@
     }
 
     @Composable
-    private fun showDatePicker(
+    private fun ShowDatePicker(
         context: Context,
         onDateSelected: (year: Int, month: Int, day: Int) -> Unit,
         onDismiss: () -> Unit

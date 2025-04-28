@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 class AdminViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = AdminRepository(app)
 
-    /** Expose the category→margin map to Compose */
+    /** Category → stored profit-margin % */
     val margins: StateFlow<Map<String, Double>> =
         repo.marginsFlow
             .stateIn(
@@ -20,9 +20,14 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 initialValue = emptyMap()
             )
 
-    /** Expose the on/off visibility map */
-    val visibility: StateFlow<Map<String, Boolean>> = repo.visibilityFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = emptyMap())
+    /** Category → visible? */
+    val visibility: StateFlow<Map<String, Boolean>> =
+        repo.visibilityFlow
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyMap()
+            )
 
     /** Update one category’s margin */
     fun updateMargin(category: String, percent: Double) {
@@ -31,7 +36,10 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Toggle one category’s on/off visibility */
     fun setVisibility(category: String, visible: Boolean) {
-        viewModelScope.launch { repo.setVisibility(category, visible) }
+        viewModelScope.launch {
+            repo.setVisibility(category, visible)
+        }
     }
 }

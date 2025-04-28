@@ -48,7 +48,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         _query.value = new
     }
 
-    /** Price‐History (with margin & overrides baked in) **/
+    /** Price-History (with margin & overrides baked in) **/
     private val _priceHistory = MutableStateFlow<PriceHistory?>(null)
     val priceHistory: StateFlow<PriceHistory?> = _priceHistory
 
@@ -89,12 +89,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         _priceHistory.value = null
     }
 
-    /** Price‐override helpers **/
-    /** Now takes only barcode, index, newPrice; category was unused **/
+    /** Price-override helpers **/
     fun overridePrice(barcode: String, index: Int, newPrice: Int) {
         viewModelScope.launch {
+            // persist the override
             overrideRepo.setOverride(barcode, index, newPrice)
-            // also update in-memory immediately
+            // update the in-memory dialog immediately
             _priceHistory.value = _priceHistory.value
                 ?.copy(prices = _priceHistory.value!!.prices
                     .mapIndexed { i, v -> if (i == index) newPrice.toFloat() else v })

@@ -8,24 +8,29 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
+import androidx.compose.material3.MenuAnchorType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductsTab(
-    homeViewModel: HomeViewModel = viewModel()
+    homeViewModel: HomeViewModel = viewModel(),
+    adminViewModel: AdminViewModel = viewModel()
 ) {
+    // 1) Observe persisted maps
     val buyersByCategory by homeViewModel.buyersByCategory.collectAsState(initial = emptyMap())
+    val visibilityMap    by adminViewModel.visibility.collectAsState(initial = emptyMap())
+
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
 
-    // UI state holders
-    val visibilityMap    = remember { mutableStateMapOf<String, Boolean>() }
-    val selectedBuyerMap = remember { mutableStateMapOf<String, String?>() }
-    categories.forEach {
-        visibilityMap.putIfAbsent(it, true)
-        selectedBuyerMap.putIfAbsent(it, null)
-    }
+    // 2) Local-only state for which dropdown is open & which buyer is selected
     var expandedCategory by remember { mutableStateOf<String?>(null) }
+    val selectedBuyerMap = remember {
+        mutableStateMapOf<String, String?>().apply {
+            categories.forEach { put(it, null) }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -41,60 +46,76 @@ fun ProductsTab(
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
-                    modifier           = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Header + switch
+                    // --- Header + toggle ---
                     Row(
-                        modifier            = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(category, style = MaterialTheme.typography.titleMedium)
+                        val visible = visibilityMap[category] ?: true
                         Switch(
-                            checked         = visibilityMap[category] == true,
-                            onCheckedChange = { visibilityMap[category] = it }
+                            checked = visible,
+                            onCheckedChange = { adminViewModel.setVisibility(category, it) }
                         )
                     }
 
-                    // Status text
+                    // --- Status text ---
                     Text(
-                        text  = if (visibilityMap[category] == true) "Status: Displayed" else "Status: Hidden",
+                        text = if (visibilityMap[category] == true)
+                            "Status: Displayed"
+                        else
+                            "Status: Hidden",
                         style = MaterialTheme.typography.bodySmall
                     )
 
-                    // Buyer dropdown
+                    // --- Buyer dropdown ---
                     ExposedDropdownMenuBox(
-                        expanded         = expandedCategory == category,
+                        expanded = expandedCategory == category,
                         onExpandedChange = { expandedCategory = if (it) category else null }
                     ) {
                         val buyers = buyersByCategory[category].orEmpty()
                         TextField(
-                            value         = selectedBuyerMap[category] ?: "",
+                            value = selectedBuyerMap[category].orEmpty(),
                             onValueChange = { /* read-only */ },
-                            readOnly      = true,
-                            placeholder   = { Text(if (buyers.isEmpty()) "No buyer available" else "Select Buyer") },
-                            trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expandedCategory == category) },
-                            modifier      = Modifier
+                            readOnly = true,
+                            placeholder = {
+                                Text(
+                                    if (buyers.isEmpty())
+                                        "No buyer available"
+                                    else
+                                        "Select Buyer"
+                                )
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expandedCategory == category)
+                            },
+                            modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
+                                .menuAnchor(
+                                    type = MenuAnchorType.PrimaryNotEditable,
+                                    enabled = true
+                                )
                         )
                         ExposedDropdownMenu(
-                            expanded          = expandedCategory == category,
-                            onDismissRequest  = { expandedCategory = null }
+                            expanded = expandedCategory == category,
+                            onDismissRequest = { expandedCategory = null }
                         ) {
                             if (buyers.isEmpty()) {
                                 DropdownMenuItem(
-                                    text    = { Text("No buyer available") },
-                                    onClick = { /* no-op*/ },
+                                    text = { Text("No buyer available") },
+                                    onClick = { /* no-op */ },
                                     enabled = false
                                 )
                             } else {
                                 buyers.forEach { buyer ->
                                     DropdownMenuItem(
-                                        text    = { Text(buyer) },
+                                        text = { Text(buyer) },
                                         onClick = {
                                             selectedBuyerMap[category] = buyer
-                                            expandedCategory           = null
+                                            expandedCategory = null
                                         }
                                     )
                                 }
@@ -102,9 +123,9 @@ fun ProductsTab(
                         }
                     }
 
-                    // Currently selected buyer
+                    // --- Currently selected buyer ---
                     Text(
-                        text  = "Using: ${selectedBuyerMap[category] ?: "—"}",
+                        text = "Using: ${selectedBuyerMap[category] ?: "—"}",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }

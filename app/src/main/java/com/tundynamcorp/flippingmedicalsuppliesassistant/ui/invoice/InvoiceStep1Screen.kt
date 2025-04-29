@@ -83,7 +83,18 @@ fun InvoiceStep1Screen(
             zip      = profile.zip
             phone    = profile.phone
             email    = profile.email.orEmpty()
-        }
+        } else {
+            // clear all fields
+            name = ""
+            dba = ""
+            address1 = ""
+            address2 = ""
+            city = ""
+            state = ""
+            zip = ""
+            phone = ""
+            email = ""
+            }
     }
 
     // 5️⃣ Dropdown state and scroll

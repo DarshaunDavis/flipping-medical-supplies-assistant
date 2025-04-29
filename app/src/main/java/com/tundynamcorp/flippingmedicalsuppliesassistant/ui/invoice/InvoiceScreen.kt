@@ -5,70 +5,51 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InvoiceScreen() {
-    // Track which step we're on
-    var step by rememberSaveable { mutableStateOf(1) }
+fun InvoiceScreen(
+    settingsViewModel: SettingsViewModel = viewModel()
+) {
+    // pull the saved profile from your SettingsViewModel
+    val profile by settingsViewModel.profileInfo.collectAsState()
 
-    // Data passed between steps
-    var sellerInfo by remember { mutableStateOf<SellerInfo?>(null) }
-    var invoiceMeta by remember { mutableStateOf<InvoiceMeta?>(null) }
+    var step by rememberSaveable { mutableStateOf(1) }
+    var invoiceData by remember { mutableStateOf<SellerInfo?>(null) }
 
     Surface(modifier = Modifier.fillMaxSize()) {
         when (step) {
             1 -> {
-                // Step 1: collect SellerInfo
-                InvoiceStep1Screen { info ->
-                    sellerInfo = info
-                    step = 2
-                }
+                InvoiceStep1Screen(
+                    initial = profile,
+                    onNext = { info ->
+                        // persist any edits back to Settings
+                        settingsViewModel.updateProfile(info)
+                        invoiceData = info
+                        step = 2
+                    }
+                )
             }
             2 -> {
-                // Step 2: collect InvoiceMeta (requires sellerInfo)
-                sellerInfo?.let { info ->
-                    InvoiceStep2Screen(
-                        sellerInfo = info,
-                        onBack = { step = 1 },
-                        onNext = { meta ->
-                            invoiceMeta = meta
-                            // TODO: advance to step 3 for line-items
-                            // For now, just log or preview:
-                            step = 3
-                        }
-                    )
-                }
-            }
-            3 -> {
-                // Simple preview of collected data (replace with Step 3 UI later)
+                // placeholder until Step 2 implementation
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Review", style = MaterialTheme.typography.titleLarge)
-                    sellerInfo?.let {
-                        Text("Seller: ${it.name}, ${it.address1}, ${it.city}, ${it.state} ${it.zip}")
-                    }
-                    invoiceMeta?.let {
-                        Text("Client: ${it.clientName}, ${it.clientAddress1}, ${it.clientCity}, ${it.clientState} ${it.clientZip}")
-                        Text("Payable To: ${it.payableTo}")
+                    Text("Collected Seller Info:", style = MaterialTheme.typography.titleLarge)
+                    invoiceData?.let { s ->
+                        Text("Name: ${s.name}")
+                        Text("City: ${s.city}, ${s.state} ${s.zip}")
                     }
                     Spacer(Modifier.weight(1f))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Button(onClick = { step = 2 }) {
-                            Text("Back")
-                        }
-                        Button(onClick = { /* TODO: finish/invoice export */ }) {
-                            Text("Finish")
-                        }
+                    Button(onClick = { step = 1 }) {
+                        Text("Back")
                     }
                 }
             }

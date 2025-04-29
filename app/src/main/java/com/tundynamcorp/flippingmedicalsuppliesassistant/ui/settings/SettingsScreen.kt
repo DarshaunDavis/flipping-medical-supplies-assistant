@@ -1,4 +1,3 @@
-// File: SettingsScreen.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings
 
 import androidx.compose.foundation.layout.Column
@@ -8,6 +7,8 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice.SellerInfo
 
 /**
@@ -15,26 +16,13 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice.SellerInfo
  * Manages local profileInfo state for editing.
  */
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(
+    settingsViewModel: SettingsViewModel = viewModel()) {
     val tabs = listOf("Profile", "Account")
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    // Local profile info state, initialized with empty/defaults
-    var profileInfo by remember {
-        mutableStateOf(
-            SellerInfo(
-                name = "",
-                dba = null,
-                address1 = "",
-                address2 = null,
-                city = "",
-                state = "",
-                zip = "",
-                phone = "",
-                email = null
-            )
-        )
-    }
+    // Pull the saved profile out of the ViewModel
+    val profileInfo by settingsViewModel.profileInfo.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTab) {
@@ -50,7 +38,7 @@ fun SettingsScreen() {
         when (selectedTab) {
             0 -> ProfileTab(
                 profileInfo = profileInfo,
-                onSave = { updated -> profileInfo = updated }
+                onSave = { settingsViewModel.updateProfile(it) }
             )
             1 -> AccountTab()
         }

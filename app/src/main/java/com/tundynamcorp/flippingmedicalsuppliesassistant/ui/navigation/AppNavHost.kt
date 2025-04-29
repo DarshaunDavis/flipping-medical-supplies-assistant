@@ -22,6 +22,7 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDia
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.admin.AdminScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice.InvoiceScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.scan.ScanScreen
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsScreen
 
 @Composable
 fun AppNavHost() {
@@ -92,7 +93,7 @@ fun AppNavHost() {
                     }
                     composable("invoice") { InvoiceScreen() }
                     composable("admin")   { AdminScreen() }
-                    composable("settings"){ /* TODO */ }
+                    composable("settings"){ SettingsScreen() }
                 }
             }
 

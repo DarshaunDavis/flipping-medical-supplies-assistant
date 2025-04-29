@@ -25,7 +25,6 @@ fun InvoiceScreen(
         when (step) {
             1 -> {
                 InvoiceStep1Screen(
-                    initial = profile,
                     onNext = { info ->
                         // persist any edits back to Settings
                         settingsViewModel.updateProfile(info)

@@ -20,6 +20,7 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigatio
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.admin.AdminScreen
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice.InvoiceScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.scan.ScanScreen
 
 @Composable
@@ -89,7 +90,7 @@ fun AppNavHost() {
                     composable("scan")    {
                         ScanScreen()
                     }
-                    composable("invoice") { /* TODO */ }
+                    composable("invoice") { InvoiceScreen() }
                     composable("admin")   { AdminScreen() }
                     composable("settings"){ /* TODO */ }
                 }

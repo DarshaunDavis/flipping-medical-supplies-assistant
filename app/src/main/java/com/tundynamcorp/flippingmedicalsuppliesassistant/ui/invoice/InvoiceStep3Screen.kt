@@ -15,7 +15,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeRepository
@@ -27,8 +26,6 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvoiceStep3Screen(
-    sellerInfo: SellerInfo,
-    invoiceMeta: InvoiceMeta,
     existingLines: List<InvoiceLine>,
     onBack: () -> Unit,
     onAddLine: (InvoiceLine) -> Unit,
@@ -104,7 +101,7 @@ fun InvoiceStep3Screen(
                         "Total: $${existingLines.sumOf { it.lineTotal.toDouble() }.toInt()}",
                 style = MaterialTheme.typography.bodyLarge
             )
-            Divider()
+            HorizontalDivider()
         }
 
         Text("Step 3: Add Item", style = MaterialTheme.typography.titleLarge)

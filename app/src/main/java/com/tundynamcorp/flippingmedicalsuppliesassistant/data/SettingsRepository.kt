@@ -1,7 +1,6 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.data
 
 import android.content.Context
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -17,16 +16,16 @@ private const val SETTINGS_NAME = "settings_prefs"
 private val Context.settingsStore by preferencesDataStore(name = SETTINGS_NAME)
 
 class SettingsRepository(private val context: Context) {
-    // 2️⃣ Preference keys
-    private val NAME_KEY      = stringPreferencesKey("profile_name")
-    private val DBA_KEY       = stringPreferencesKey("profile_dba")
-    private val ADDR1_KEY     = stringPreferencesKey("profile_addr1")
-    private val ADDR2_KEY     = stringPreferencesKey("profile_addr2")
-    private val CITY_KEY      = stringPreferencesKey("profile_city")
-    private val STATE_KEY     = stringPreferencesKey("profile_state")
-    private val ZIP_KEY       = stringPreferencesKey("profile_zip")
-    private val PHONE_KEY     = stringPreferencesKey("profile_phone")
-    private val EMAIL_KEY     = stringPreferencesKey("profile_email")
+    // 2️⃣ Preference keys (lowerCamelCase)
+    private val nameKey   = stringPreferencesKey("profile_name")
+    private val dbaKey    = stringPreferencesKey("profile_dba")
+    private val addr1Key  = stringPreferencesKey("profile_addr1")
+    private val addr2Key  = stringPreferencesKey("profile_addr2")
+    private val cityKey   = stringPreferencesKey("profile_city")
+    private val stateKey  = stringPreferencesKey("profile_state")
+    private val zipKey    = stringPreferencesKey("profile_zip")
+    private val phoneKey  = stringPreferencesKey("profile_phone")
+    private val emailKey  = stringPreferencesKey("profile_email")
 
     /** Stream that emits the saved SellerInfo whenever it changes */
     val profileFlow: Flow<SellerInfo> = context.settingsStore.data
@@ -36,30 +35,30 @@ class SettingsRepository(private val context: Context) {
         }
         .map { prefs ->
             SellerInfo(
-                name     = prefs[NAME_KEY] ?: "",
-                dba      = prefs[DBA_KEY],
-                address1 = prefs[ADDR1_KEY] ?: "",
-                address2 = prefs[ADDR2_KEY],
-                city     = prefs[CITY_KEY] ?: "",
-                state    = prefs[STATE_KEY] ?: "",
-                zip      = prefs[ZIP_KEY] ?: "",
-                phone    = prefs[PHONE_KEY] ?: "",
-                email    = prefs[EMAIL_KEY]
+                name     = prefs[nameKey]   ?: "",
+                dba      = prefs[dbaKey],
+                address1 = prefs[addr1Key]  ?: "",
+                address2 = prefs[addr2Key],
+                city     = prefs[cityKey]   ?: "",
+                state    = prefs[stateKey]  ?: "",
+                zip      = prefs[zipKey]    ?: "",
+                phone    = prefs[phoneKey]  ?: "",
+                email    = prefs[emailKey]
             )
         }
 
     /** Persist a full SellerInfo */
     suspend fun saveProfile(info: SellerInfo) {
         context.settingsStore.edit { prefs ->
-            prefs[NAME_KEY]  = info.name
-            prefs[DBA_KEY]   = info.dba.orEmpty()
-            prefs[ADDR1_KEY] = info.address1
-            prefs[ADDR2_KEY] = info.address2.orEmpty()
-            prefs[CITY_KEY]  = info.city
-            prefs[STATE_KEY] = info.state
-            prefs[ZIP_KEY]   = info.zip
-            prefs[PHONE_KEY] = info.phone
-            prefs[EMAIL_KEY] = info.email.orEmpty()
+            prefs[nameKey]  = info.name
+            prefs[dbaKey]   = info.dba.orEmpty()
+            prefs[addr1Key] = info.address1
+            prefs[addr2Key] = info.address2.orEmpty()
+            prefs[cityKey]  = info.city
+            prefs[stateKey] = info.state
+            prefs[zipKey]   = info.zip
+            prefs[phoneKey] = info.phone
+            prefs[emailKey] = info.email.orEmpty()
         }
     }
 }

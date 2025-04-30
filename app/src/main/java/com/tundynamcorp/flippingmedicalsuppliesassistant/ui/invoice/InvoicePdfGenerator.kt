@@ -4,6 +4,9 @@ import android.content.Context
 import android.graphics.*
 import android.graphics.pdf.PdfDocument
 import android.os.Environment
+import androidx.core.graphics.toColorInt
+import androidx.core.graphics.scale
+import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -31,7 +34,7 @@ object InvoicePdfGenerator {
         val bodyP   = Paint().apply { typeface = Typeface.DEFAULT; textSize = 12f }
         val totalP  = Paint().apply { typeface = Typeface.DEFAULT_BOLD; textSize = 16f }
         val lineP   = Paint().apply { color = Color.LTGRAY; strokeWidth = 1f }
-        val stripeP = Paint().apply { color = Color.parseColor("#F7F7F7") }
+        val stripeP = Paint().apply { color = "#F7F7F7".toColorInt() }
 
         // Helper to format phone
         fun formatPhone(raw: String): String {
@@ -64,16 +67,12 @@ object InvoicePdfGenerator {
         // 4️⃣ Determine invoice title position just below seller block
         val invoiceY = y + 16f
 
-        // 5️⃣ Draw logo, vertically centered between topMargin and invoiceY
-        context.resources.getIdentifier("fmsalogo", "drawable", context.packageName)
-            .takeIf { it != 0 }
-            ?.let { id ->
-                val bmp = BitmapFactory.decodeResource(context.resources, id)
-                val scaled = Bitmap.createScaledBitmap(bmp, 80, 80, false)
-                val logoHeight = scaled.height.toFloat()
-                val logoY = topMargin + ((invoiceY - topMargin) - logoHeight) / 2f
-                c.drawBitmap(scaled, 495f, logoY, null)
-            }
+        // 5️⃣ Draw logo using direct resource reference and scale extension
+        val bmp = BitmapFactory.decodeResource(context.resources, R.drawable.fmsalogo)
+        val scaledBmp = bmp.scale(80, 80)
+        val logoHeight = scaledBmp.height.toFloat()
+        val logoY = topMargin + ((invoiceY - topMargin) - logoHeight) / 2f
+        c.drawBitmap(scaledBmp, 495f, logoY, null)
 
         // 6️⃣ Invoice title & date
         c.drawText("Invoice", 40f, invoiceY, titleP)
@@ -113,7 +112,6 @@ object InvoicePdfGenerator {
         listOf("Qty" to 380f, "Unit" to 430f, "Total" to 520f).forEach { (txt, x) ->
             c.drawText(txt, x - headerP.measureText(txt), headerY, headerP)
         }
-        // thicker under-header line, moved down slightly
         val headerSepY = headerY + headerP.textSize + 8f
         c.drawLine(40f, headerSepY, 555f, headerSepY, lineP.apply { strokeWidth = 2f })
 

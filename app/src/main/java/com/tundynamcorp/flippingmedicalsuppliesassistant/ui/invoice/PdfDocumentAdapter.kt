@@ -1,6 +1,5 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
-import android.content.Context
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.ParcelFileDescriptor
@@ -10,7 +9,6 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 
 class PdfDocumentAdapter(
-    private val context: Context,
     private val pdfPath: String
 ) : PrintDocumentAdapter() {
 

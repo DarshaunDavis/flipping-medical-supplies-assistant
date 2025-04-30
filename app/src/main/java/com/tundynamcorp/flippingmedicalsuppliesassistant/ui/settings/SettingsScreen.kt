@@ -9,7 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
-import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice.SellerInfo
 
 /**
  * SettingsHost: two tabs, delegating to ProfileTab and AccountTab.

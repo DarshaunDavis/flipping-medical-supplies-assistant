@@ -2,17 +2,17 @@ package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
@@ -25,7 +25,9 @@ fun InvoiceStep2Screen(
     onBack: () -> Unit,
     onNext: (InvoiceMeta) -> Unit
 ) {
-    // Initialize fields from initial or blank
+    val focusManager = LocalFocusManager.current
+
+    // Initialize each field from `initial` if provided, otherwise blank
     var clientName     by rememberSaveable { mutableStateOf(initial?.clientName     ?: "") }
     var clientAddress1 by rememberSaveable { mutableStateOf(initial?.clientAddress1 ?: "") }
     var clientAddress2 by rememberSaveable { mutableStateOf(initial?.clientAddress2.orEmpty()) }
@@ -58,6 +60,14 @@ fun InvoiceStep2Screen(
             value = clientName,
             onValueChange = { clientName = it },
             label = { Text("Client Name") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -66,6 +76,14 @@ fun InvoiceStep2Screen(
             value = clientAddress1,
             onValueChange = { clientAddress1 = it },
             label = { Text("Client Address 1") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -74,6 +92,14 @@ fun InvoiceStep2Screen(
             value = clientAddress2,
             onValueChange = { clientAddress2 = it },
             label = { Text("Client Address 2 (optional)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -82,6 +108,14 @@ fun InvoiceStep2Screen(
             value = clientCity,
             onValueChange = { clientCity = it },
             label = { Text("City") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -94,6 +128,7 @@ fun InvoiceStep2Screen(
                 value = clientState.ifBlank { "Select State" },
                 onValueChange = {},
                 readOnly = true,
+                singleLine = true,
                 label = { Text("State") },
                 trailingIcon = {
                     ExposedDropdownMenuDefaults.TrailingIcon(stateDropdownExpanded)
@@ -115,6 +150,7 @@ fun InvoiceStep2Screen(
                         onClick = {
                             clientState = s
                             stateDropdownExpanded = false
+                            focusManager.moveFocus(FocusDirection.Down)
                         }
                     )
                 }
@@ -126,8 +162,15 @@ fun InvoiceStep2Screen(
             value = clientZip,
             onValueChange = { clientZip = it.filter(Char::isDigit) },
             label = { Text("Zip Code") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
+            modifier = Modifier.fillMaxWidth()
         )
 
         // Payable To (read-only)
@@ -135,8 +178,9 @@ fun InvoiceStep2Screen(
             value = payableTo,
             onValueChange = {},
             label = { Text("Payable To") },
-            modifier = Modifier.fillMaxWidth(),
-            readOnly = true
+            readOnly = true,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
         )
 
         // Invoice # (optional)
@@ -144,9 +188,15 @@ fun InvoiceStep2Screen(
             value = invoiceNum,
             onValueChange = { invoiceNum = it.filter(Char::isDigit) },
             label = { Text("Invoice # (optional)") },
-            modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus() }
+            ),
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(Modifier.height(24.dp))
@@ -174,8 +224,13 @@ fun InvoiceStep2Screen(
                         )
                     )
                 },
-                enabled = listOf(clientName, clientAddress1, clientCity, clientState, clientZip)
-                    .all { it.isNotBlank() }
+                enabled = listOf(
+                    clientName,
+                    clientAddress1,
+                    clientCity,
+                    clientState,
+                    clientZip
+                ).all { it.isNotBlank() }
             ) {
                 Text("Next")
             }

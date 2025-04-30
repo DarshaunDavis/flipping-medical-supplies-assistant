@@ -1,4 +1,3 @@
-// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/invoice/InvoiceScreen.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
 import androidx.compose.foundation.layout.*
@@ -15,13 +14,13 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsVie
 fun InvoiceScreen(
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
-    // ① Pull persisted profile for Step 1 autofill
+    // Pull persisted profile to offer autofill in Step 1
     val profile by settingsViewModel.profileInfo.collectAsState()
 
-    // ② Track current step
+    // Track which step we’re on
     var step by rememberSaveable { mutableStateOf(1) }
 
-    // ③ Hold the SellerInfo and InvoiceMeta as we move through steps
+    // Hold the data collected in each step
     var sellerInfo by remember { mutableStateOf<SellerInfo?>(null) }
     var invoiceMeta by remember { mutableStateOf<InvoiceMeta?>(null) }
 
@@ -30,7 +29,7 @@ fun InvoiceScreen(
             // --- Step 1: Seller Info ---
             1 -> InvoiceStep1Screen(
                 onNext = { info ->
-                    // Persist back to profile if desired
+                    // optionally persist back to profile
                     settingsViewModel.updateProfile(info)
                     sellerInfo = info
                     step = 2
@@ -38,53 +37,61 @@ fun InvoiceScreen(
             )
 
             // --- Step 2: Client / Invoice Details ---
-            2 -> {
-                // Only show when we have sellerInfo
-                sellerInfo?.let { info ->
-                    InvoiceStep2Screen(
-                        initial    = invoiceMeta,
-                        sellerInfo = info,
-                        onBack      = { step = 1 },
-                        onNext      = { meta ->
-                            invoiceMeta = meta
-                            step = 3
-                        }
-                    )
-                }
+            2 -> sellerInfo?.let { info ->
+                InvoiceStep2Screen(
+                    initial    = invoiceMeta,
+                    sellerInfo = info,
+                    onBack     = { step = 1 },
+                    onNext     = { meta ->
+                        invoiceMeta = meta
+                        step = 3
+                    }
+                )
             }
 
-            // --- Step 3: Preview / Next Steps (placeholder) ---
-            3 -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            // --- Step 3: Review Preview ---
+            3 -> Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Review", style = MaterialTheme.typography.titleLarge)
+
+                sellerInfo?.let { s ->
+                    Text("Seller: ${s.name}")
+                    Text(
+                        "Seller Address: ${s.address1}" +
+                                (s.address2?.let { ", $it" } ?: "")
+                    )
+                    Text("Location: ${s.city}, ${s.state} ${s.zip}")
+                    Text("Phone: ${s.phone}")
+                    s.email?.let { Text("Email: $it") }
+                }
+
+                invoiceMeta?.let { m ->
+                    Spacer(Modifier.height(8.dp))
+                    Text("Client: ${m.clientName}")
+                    Text(
+                        "Client Address: ${m.clientAddress1}" +
+                                (m.clientAddress2?.let { ", $it" } ?: "")
+                    )
+                    Text("Location: ${m.clientCity}, ${m.clientState} ${m.clientZip}")
+                    Text("Payable To: ${m.payableTo}")
+                    m.invoiceNumber?.let { Text("Invoice #: $it") }
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Review", style = MaterialTheme.typography.titleLarge)
-                    sellerInfo?.let { s ->
-                        Text("Seller: ${s.name}")
-                        Text("Seller Addr: ${s.address1}${s.address2?.let { ", $it" } ?: ""}")
-                        Text("Seller Location: ${s.city}, ${s.state} ${s.zip}")
-                        }
-                    invoiceMeta?.let { m ->
-                        Text("Client: ${m.clientName}")
-                        Text("Client Addr: ${m.clientAddress1}${m.clientAddress2?.let { ", $it" } ?: ""}")
-                        Text("Client Location: ${m.clientCity}, ${m.clientState} ${m.clientZip}")
-                        Text("Payable To: ${m.payableTo}")
-                        m.invoiceNumber?.let { Text("Invoice #: $it") }
-                        }
-                    Spacer(Modifier.weight(1f))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Button(onClick = { step = 2 }) {
-                            Text("Back")
-                        }
-                        Button(onClick = { /* TODO: finalize/invoice export */ }) {
-                            Text("Finish")
-                        }
+                    Button(onClick = { step = 2 }) {
+                        Text("Back")
+                    }
+                    Button(onClick = { /* TODO: finalize or export invoice */ }) {
+                        Text("Finish")
                     }
                 }
             }

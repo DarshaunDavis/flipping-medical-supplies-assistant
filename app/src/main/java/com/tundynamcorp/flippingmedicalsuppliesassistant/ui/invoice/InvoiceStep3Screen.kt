@@ -29,13 +29,15 @@ import java.util.*
 fun InvoiceStep3Screen(
     sellerInfo: SellerInfo,
     invoiceMeta: InvoiceMeta,
+    existingLines: List<InvoiceLine>,
     onBack: () -> Unit,
-    onNext: (Product, String, Int, Float) -> Unit
+    onAddLine: (InvoiceLine) -> Unit,
+    onDone: () -> Unit
 ) {
     val context = LocalContext.current
     val repo = remember { HomeRepository() }
 
-    // 1️⃣ Category & Product selection
+    // 1️⃣ Category & product selection
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
     var catExpanded by rememberSaveable { mutableStateOf(false) }
     var selectedCat by rememberSaveable { mutableStateOf<String?>(null) }
@@ -51,7 +53,7 @@ fun InvoiceStep3Screen(
     var quantityStr by rememberSaveable { mutableStateOf("1") }
     val quantity = quantityStr.toIntOrNull() ?: 1
 
-    // 4️⃣ Raw price history state
+    // 4️⃣ Fetch raw price history when product changes
     var rawHistory by remember { mutableStateOf<PriceHistory?>(null) }
     LaunchedEffect(selectedProd) {
         selectedProd?.let {
@@ -60,7 +62,7 @@ fun InvoiceStep3Screen(
         }
     }
 
-    // 5️⃣ Compute unit price when we have expDate & rawHistory
+    // 5️⃣ Compute unitPrice based on expDate & rawHistory
     var unitPrice by rememberSaveable { mutableStateOf<Float?>(null) }
     LaunchedEffect(expDate, rawHistory) {
         val dateStr = expDate
@@ -72,9 +74,8 @@ fun InvoiceStep3Screen(
                 val chosen = fmt.parse(dateStr)!!
                 val calSel = Calendar.getInstance().apply { time = chosen }
                 val calBase = Calendar.getInstance().apply { time = base }
-                val diffMonths =
-                    (calSel.get(Calendar.YEAR) - calBase.get(Calendar.YEAR)) * 12 +
-                            (calSel.get(Calendar.MONTH) - calBase.get(Calendar.MONTH))
+                val diffMonths = (calSel.get(Calendar.YEAR) - calBase.get(Calendar.YEAR)) * 12 +
+                        (calSel.get(Calendar.MONTH) - calBase.get(Calendar.MONTH))
                 val idx = if (diffMonths > 11) 0 else (11 - diffMonths).coerceAtLeast(0)
                 unitPrice = history.prices.getOrNull(idx)
             } catch (_: Exception) {
@@ -83,22 +84,32 @@ fun InvoiceStep3Screen(
         }
     }
 
-    // 6️⃣ Filter products by category
-    val allProducts by repo.getAllProducts().collectAsState(initial = emptyList())
+    // 6️⃣ Filter products for the selected category
+    val allProducts by repo.getAllProducts().collectAsState(emptyList())
     val prodsForCat = selectedCat?.let { cat ->
         allProducts.filter { it.category == cat }
     }.orEmpty()
 
     Column(
-        Modifier
+        modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Step 3: Select Item & Quantity", style = MaterialTheme.typography.titleLarge)
+        // --- Summary of added items ---
+        if (existingLines.isNotEmpty()) {
+            Text(
+                text = "Items added: ${existingLines.size}    " +
+                        "Total: $${existingLines.sumOf { it.lineTotal.toDouble() }.toInt()}",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Divider()
+        }
 
-        // Category spinner
+        Text("Step 3: Add Item", style = MaterialTheme.typography.titleLarge)
+
+        // Category dropdown
         ExposedDropdownMenuBox(
             expanded = catExpanded,
             onExpandedChange = { catExpanded = it }
@@ -114,7 +125,7 @@ fun InvoiceStep3Screen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
+                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = catExpanded,
@@ -133,7 +144,7 @@ fun InvoiceStep3Screen(
             }
         }
 
-        // Product spinner
+        // Product dropdown
         ExposedDropdownMenuBox(
             expanded = prodExpanded,
             onExpandedChange = { prodExpanded = it }
@@ -149,7 +160,7 @@ fun InvoiceStep3Screen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
+                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = prodExpanded,
@@ -185,7 +196,7 @@ fun InvoiceStep3Screen(
             )
         }
 
-        // Quantity input
+        // Quantity field
         OutlinedTextField(
             value = quantityStr,
             onValueChange = { quantityStr = it.filter(Char::isDigit) },
@@ -195,7 +206,7 @@ fun InvoiceStep3Screen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Price display
+        // Price preview
         unitPrice?.let { price ->
             Text("Unit Price: $${price.toInt()}", style = MaterialTheme.typography.bodyLarge)
             Text(
@@ -206,33 +217,49 @@ fun InvoiceStep3Screen(
 
         Spacer(Modifier.height(24.dp))
 
-        // Back / Next
+        // Action buttons
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            TextButton(onClick = onBack) { Text("Back") }
+            TextButton(onClick = onBack) {
+                Text("Back")
+            }
             Button(
                 onClick = {
-                    selectedProd?.let { prod ->
-                        expDate?.let { date ->
-                            unitPrice?.let { price ->
-                                onNext(prod, date, quantity, price * quantity)
-                            }
-                        }
-                    }
+                    val prod = selectedProd!!
+                    val price = unitPrice!!
+                    onAddLine(InvoiceLine(prod.description, price, quantity))
+                    // reset fields
+                    selectedCat = null
+                    selectedProd = null
+                    expDate = null
+                    quantityStr = "1"
+                    unitPrice = null
                 },
-                enabled = selectedProd != null
-                        && expDate != null
-                        && (unitPrice ?: 0f) > 0f
+                enabled = selectedProd != null && unitPrice != null
             ) {
-                Text("Next")
+                Text("Add Another")
+            }
+            Button(
+                onClick = {
+                    // If user has a selection, add it; otherwise rely on existingLines
+                    selectedProd?.let { prod ->
+                        val price = unitPrice!!
+                        onAddLine(InvoiceLine(prod.description, price, quantity))
+                    }
+                    onDone()
+                },
+                enabled = existingLines.isNotEmpty() ||
+                        (selectedProd != null && unitPrice != null)
+            ) {
+                Text("Done")
             }
         }
     }
 }
 
-/** Compose helper to show a native DatePickerDialog */
+/** Helper to show a native DatePickerDialog */
 @Composable
 private fun ShowDatePicker(
     context: Context,
@@ -243,7 +270,7 @@ private fun ShowDatePicker(
         val now = Calendar.getInstance()
         DatePickerDialog(
             context,
-            { _, y, m, d -> onDateSelected(y, m, d) },
+            { _, year, month, day -> onDateSelected(year, month, day) },
             now.get(Calendar.YEAR),
             now.get(Calendar.MONTH),
             now.get(Calendar.DAY_OF_MONTH)

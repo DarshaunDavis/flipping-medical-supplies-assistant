@@ -229,7 +229,7 @@ fun InvoiceStep3Screen(
                 onClick = {
                     val prod = selectedProd!!
                     val price = unitPrice!!
-                    onAddLine(InvoiceLine(prod.description, price, quantity))
+                    onAddLine(InvoiceLine(prod.description, expDate!!, price, quantity))
                     // reset fields
                     selectedCat = null
                     selectedProd = null
@@ -246,7 +246,7 @@ fun InvoiceStep3Screen(
                     // If user has a selection, add it; otherwise rely on existingLines
                     selectedProd?.let { prod ->
                         val price = unitPrice!!
-                        onAddLine(InvoiceLine(prod.description, price, quantity))
+                        onAddLine(InvoiceLine(prod.description, expDate!!, price, quantity))
                     }
                     onDone()
                 },

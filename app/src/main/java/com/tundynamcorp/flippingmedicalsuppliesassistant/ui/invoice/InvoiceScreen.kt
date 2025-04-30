@@ -1,21 +1,29 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
+import android.content.Context
+import android.print.PrintAttributes
+import android.print.PrintManager
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvoiceScreen(
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+
     // Persisted seller profile for Step 1
     val profile by settingsViewModel.profileInfo.collectAsState()
 
@@ -26,7 +34,7 @@ fun InvoiceScreen(
     var sellerInfo  by remember { mutableStateOf<SellerInfo?>(null) }
     var invoiceMeta by remember { mutableStateOf<InvoiceMeta?>(null) }
 
-    // Now hold a list of line‐items instead of a single line
+    // Now hold a list of line‐items
     var lines by remember { mutableStateOf<List<InvoiceLine>>(emptyList()) }
 
     Surface(Modifier.fillMaxSize()) {
@@ -58,7 +66,7 @@ fun InvoiceScreen(
                 InvoiceStep3Screen(
                     sellerInfo    = s,
                     invoiceMeta   = m,
-                    existingLines = lines,           // ← pass existing items here
+                    existingLines = lines,
                     onBack        = { step = 2 },
                     onAddLine     = { line -> lines = lines + line },
                     onDone        = { step = 4 }
@@ -118,9 +126,24 @@ fun InvoiceScreen(
                     Button(onClick = { step = 3 }) {
                         Text("Back")
                     }
-                    Button(onClick = { /* TODO: generate/export invoice */ }) {
-                        Text("Finish")
-                    }
+                    Button(onClick = {
+                        // 1) generate the file as before
+                        val file = InvoicePdfGenerator.generate(
+                            context = context,
+                            seller  = sellerInfo!!,
+                            meta    = invoiceMeta!!,
+                            lines   = lines
+                                    )
+                        // 2) launch Print Preview (with "Save as PDF" built in)
+                        val printManager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
+                        printManager.print(
+                            "Invoice — ${file.name}",
+                            PdfDocumentAdapter(context, file.absolutePath),
+                            PrintAttributes.Builder().build()
+                                    )
+                        }) {
+                        Text("Print / Save")
+                        }
                 }
             }
         }

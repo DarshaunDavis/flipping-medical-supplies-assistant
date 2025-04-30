@@ -2,6 +2,7 @@ package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
 data class InvoiceLine(
     val description: String,
+    val expiration: String,
     val unitPrice: Float,
     var quantity: Int = 1
 ) {

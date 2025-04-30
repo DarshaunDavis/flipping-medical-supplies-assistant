@@ -5,9 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -15,40 +15,76 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsVie
 fun InvoiceScreen(
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
-    // pull the saved profile from your SettingsViewModel
+    // ① Pull persisted profile for Step 1 autofill
     val profile by settingsViewModel.profileInfo.collectAsState()
 
+    // ② Track current step
     var step by rememberSaveable { mutableStateOf(1) }
-    var invoiceData by remember { mutableStateOf<SellerInfo?>(null) }
+
+    // ③ Hold the SellerInfo and InvoiceMeta as we move through steps
+    var sellerInfo by remember { mutableStateOf<SellerInfo?>(null) }
+    var invoiceMeta by remember { mutableStateOf<InvoiceMeta?>(null) }
 
     Surface(modifier = Modifier.fillMaxSize()) {
         when (step) {
-            1 -> {
-                InvoiceStep1Screen(
-                    onNext = { info ->
-                        // persist any edits back to Settings
-                        settingsViewModel.updateProfile(info)
-                        invoiceData = info
-                        step = 2
-                    }
-                )
-            }
+            // --- Step 1: Seller Info ---
+            1 -> InvoiceStep1Screen(
+                onNext = { info ->
+                    // Persist back to profile if desired
+                    settingsViewModel.updateProfile(info)
+                    sellerInfo = info
+                    step = 2
+                }
+            )
+
+            // --- Step 2: Client / Invoice Details ---
             2 -> {
-                // placeholder until Step 2 implementation
+                // Only show when we have sellerInfo
+                sellerInfo?.let { info ->
+                    InvoiceStep2Screen(
+                        initial    = invoiceMeta,
+                        sellerInfo = info,
+                        onBack      = { step = 1 },
+                        onNext      = { meta ->
+                            invoiceMeta = meta
+                            step = 3
+                        }
+                    )
+                }
+            }
+
+            // --- Step 3: Preview / Next Steps (placeholder) ---
+            3 -> {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Collected Seller Info:", style = MaterialTheme.typography.titleLarge)
-                    invoiceData?.let { s ->
-                        Text("Name: ${s.name}")
-                        Text("City: ${s.city}, ${s.state} ${s.zip}")
-                    }
+                    Text("Review", style = MaterialTheme.typography.titleLarge)
+                    sellerInfo?.let { s ->
+                        Text("Seller: ${s.name}")
+                        Text("Seller Addr: ${s.address1}${s.address2?.let { ", $it" } ?: ""}")
+                        Text("Seller Location: ${s.city}, ${s.state} ${s.zip}")
+                        }
+                    invoiceMeta?.let { m ->
+                        Text("Client: ${m.clientName}")
+                        Text("Client Addr: ${m.clientAddress1}${m.clientAddress2?.let { ", $it" } ?: ""}")
+                        Text("Client Location: ${m.clientCity}, ${m.clientState} ${m.clientZip}")
+                        Text("Payable To: ${m.payableTo}")
+                        m.invoiceNumber?.let { Text("Invoice #: $it") }
+                        }
                     Spacer(Modifier.weight(1f))
-                    Button(onClick = { step = 1 }) {
-                        Text("Back")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Button(onClick = { step = 2 }) {
+                            Text("Back")
+                        }
+                        Button(onClick = { /* TODO: finalize/invoice export */ }) {
+                            Text("Finish")
+                        }
                     }
                 }
             }

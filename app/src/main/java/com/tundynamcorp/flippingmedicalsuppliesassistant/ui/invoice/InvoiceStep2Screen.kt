@@ -1,31 +1,15 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringArrayResource
@@ -33,38 +17,35 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 
-/**
- * Step 2 form: Invoice details after seller info.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvoiceStep2Screen(
+    initial: InvoiceMeta? = null,
     sellerInfo: SellerInfo,
     onBack: () -> Unit,
     onNext: (InvoiceMeta) -> Unit
 ) {
-    // Local state for client fields
-    var clientName by remember { mutableStateOf("") }
-    var clientAddress1 by remember { mutableStateOf("") }
-    var clientAddress2 by remember { mutableStateOf("") }
-    var clientCity by remember { mutableStateOf("") }
-    var clientState by remember { mutableStateOf("") }
-    var clientZip by remember { mutableStateOf("") }
-    var invoiceNum by remember { mutableStateOf("") }
+    // Initialize fields from initial or blank
+    var clientName     by rememberSaveable { mutableStateOf(initial?.clientName     ?: "") }
+    var clientAddress1 by rememberSaveable { mutableStateOf(initial?.clientAddress1 ?: "") }
+    var clientAddress2 by rememberSaveable { mutableStateOf(initial?.clientAddress2.orEmpty()) }
+    var clientCity     by rememberSaveable { mutableStateOf(initial?.clientCity     ?: "") }
+    var clientState    by rememberSaveable { mutableStateOf(initial?.clientState    ?: "") }
+    var clientZip      by rememberSaveable { mutableStateOf(initial?.clientZip      ?: "") }
+    var invoiceNum     by rememberSaveable { mutableStateOf(initial?.invoiceNumber.orEmpty()) }
 
-    // Pre-fill “Payable To” from sellerInfo.dba or sellerInfo.name
+    // “Payable To” derived from sellerInfo
     val payableTo = remember(sellerInfo) {
         sellerInfo.dba ?: sellerInfo.name
     }
 
-    // States dropdown reuse
+    // Dropdown and scroll state
     val statesList = stringArrayResource(id = R.array.states).toList()
     var stateDropdownExpanded by remember { mutableStateOf(false) }
-
     val scrollState = rememberScrollState()
 
     Column(
-        Modifier
+        modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(16.dp),
@@ -72,6 +53,7 @@ fun InvoiceStep2Screen(
     ) {
         Text("Step 2: Invoice Details", style = MaterialTheme.typography.titleLarge)
 
+        // Client Name
         OutlinedTextField(
             value = clientName,
             onValueChange = { clientName = it },
@@ -79,6 +61,7 @@ fun InvoiceStep2Screen(
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Client Address 1
         OutlinedTextField(
             value = clientAddress1,
             onValueChange = { clientAddress1 = it },
@@ -86,6 +69,7 @@ fun InvoiceStep2Screen(
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Client Address 2 (optional)
         OutlinedTextField(
             value = clientAddress2,
             onValueChange = { clientAddress2 = it },
@@ -137,7 +121,7 @@ fun InvoiceStep2Screen(
             }
         }
 
-        // Zip
+        // Zip Code
         OutlinedTextField(
             value = clientZip,
             onValueChange = { clientZip = it.filter(Char::isDigit) },
@@ -155,7 +139,7 @@ fun InvoiceStep2Screen(
             readOnly = true
         )
 
-        // Invoice #
+        // Invoice # (optional)
         OutlinedTextField(
             value = invoiceNum,
             onValueChange = { invoiceNum = it.filter(Char::isDigit) },
@@ -167,6 +151,7 @@ fun InvoiceStep2Screen(
 
         Spacer(Modifier.height(24.dp))
 
+        // Back & Next buttons
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween

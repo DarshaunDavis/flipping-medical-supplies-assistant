@@ -1,3 +1,4 @@
+// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/invoice/InvoiceScreen.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
 import androidx.compose.foundation.layout.*
@@ -7,6 +8,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -14,33 +16,36 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsVie
 fun InvoiceScreen(
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
-    // Pull persisted profile to offer autofill in Step 1
+    // Persisted profile for Step 1
     val profile by settingsViewModel.profileInfo.collectAsState()
 
-    // Track which step we’re on
+    // Which step: 1=Seller, 2=Client, 3=Item, 4=Review
     var step by rememberSaveable { mutableStateOf(1) }
 
-    // Hold the data collected in each step
-    var sellerInfo by remember { mutableStateOf<SellerInfo?>(null) }
+    // Collected data
+    var sellerInfo  by remember { mutableStateOf<SellerInfo?>(null) }
     var invoiceMeta by remember { mutableStateOf<InvoiceMeta?>(null) }
 
-    Surface(modifier = Modifier.fillMaxSize()) {
-        when (step) {
-            // --- Step 1: Seller Info ---
-            1 -> InvoiceStep1Screen(
-                onNext = { info ->
-                    // optionally persist back to profile
-                    settingsViewModel.updateProfile(info)
-                    sellerInfo = info
-                    step = 2
-                }
-            )
+    // Step 3 results
+    var lineProduct   by remember { mutableStateOf<Product?>(null) }
+    var lineExpiry    by remember { mutableStateOf<String?>(null) }
+    var lineQuantity  by remember { mutableStateOf(0) }
+    var lineTotal     by remember { mutableStateOf(0f) }
 
-            // --- Step 2: Client / Invoice Details ---
-            2 -> sellerInfo?.let { info ->
+    Surface(Modifier.fillMaxSize()) {
+        when (step) {
+            // Step 1: Seller Info
+            1 -> InvoiceStep1Screen(onNext = { info ->
+                settingsViewModel.updateProfile(info)
+                sellerInfo = info
+                step = 2
+            })
+
+            // Step 2: Client / Invoice Details
+            2 -> sellerInfo?.let { s ->
                 InvoiceStep2Screen(
                     initial    = invoiceMeta,
-                    sellerInfo = info,
+                    sellerInfo = s,
                     onBack     = { step = 1 },
                     onNext     = { meta ->
                         invoiceMeta = meta
@@ -49,48 +54,66 @@ fun InvoiceScreen(
                 )
             }
 
-            // --- Step 3: Review Preview ---
-            3 -> Column(
-                modifier = Modifier
+            // Step 3: Item & Quantity
+            3 -> {
+                val s = sellerInfo; val m = invoiceMeta
+                if (s != null && m != null) {
+                    InvoiceStep3Screen(
+                        sellerInfo  = s,
+                        invoiceMeta = m,
+                        onBack      = { step = 2 },
+                        onNext      = { prod, exp, qty, total ->
+                            lineProduct  = prod
+                            lineExpiry   = exp
+                            lineQuantity = qty
+                            lineTotal    = total
+                            step = 4
+                        }
+                    )
+                }
+            }
+
+            // Step 4: Final Review
+            4 -> Column(
+                Modifier
                     .fillMaxSize()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Review", style = MaterialTheme.typography.titleLarge)
+                Text("Review Invoice", style = MaterialTheme.typography.titleLarge)
 
+                // Seller
                 sellerInfo?.let { s ->
                     Text("Seller: ${s.name}")
-                    Text(
-                        "Seller Address: ${s.address1}" +
-                                (s.address2?.let { ", $it" } ?: "")
-                    )
+                    Text("Address: ${s.address1}${s.address2?.let { ", $it" } ?: ""}")
                     Text("Location: ${s.city}, ${s.state} ${s.zip}")
-                    Text("Phone: ${s.phone}")
-                    s.email?.let { Text("Email: $it") }
                 }
 
+                // Client
                 invoiceMeta?.let { m ->
                     Spacer(Modifier.height(8.dp))
                     Text("Client: ${m.clientName}")
-                    Text(
-                        "Client Address: ${m.clientAddress1}" +
-                                (m.clientAddress2?.let { ", $it" } ?: "")
-                    )
+                    Text("Address: ${m.clientAddress1}${m.clientAddress2?.let { ", $it" } ?: ""}")
                     Text("Location: ${m.clientCity}, ${m.clientState} ${m.clientZip}")
-                    Text("Payable To: ${m.payableTo}")
-                    m.invoiceNumber?.let { Text("Invoice #: $it") }
+                }
+
+                // Line‐item
+                if (lineProduct != null && lineExpiry != null && lineQuantity > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Product: ${lineProduct!!.description}")
+                    Text("Expires: $lineExpiry")
+                    Text("Quantity: $lineQuantity")
+                    Text("Line Total: $${lineTotal.toInt()}", style = MaterialTheme.typography.titleLarge)
                 }
 
                 Spacer(Modifier.weight(1f))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Button(onClick = { step = 2 }) {
-                        Text("Back")
-                    }
-                    Button(onClick = { /* TODO: finalize or export invoice */ }) {
+                    Button(onClick = { step = 3 }) { Text("Back") }
+                    Button(onClick = { /* TODO: generate/export invoice */ }) {
                         Text("Finish")
                     }
                 }

@@ -14,11 +14,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Check Firebase secret
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "❌ GOOGLE_SERVICES_JSON is empty!"
+            exit 1
+          else
+            echo "✅ Secret loaded (${#GOOGLE_SERVICES_JSON} bytes)"
+          fi
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+
       - name: Write Firebase config
         run: |
           echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
-        env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+
+          - name: Debug: list `app/` contents
+            run: |
+          echo "Contents of app/:"
+          ls -l app/
+
+          - name: Debug: show first line of the JSON
+            run: head -n1 app/google-services.json || echo "❌ File not found"
 
       - name: Set up JDK
         uses: actions/setup-java@v3
@@ -30,4 +47,4 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build with Gradle
-        run: ./gradlew build
+        run: ./gradlew build --stacktrace --no-daemon

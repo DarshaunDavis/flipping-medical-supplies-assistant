@@ -1,5 +1,4 @@
 name: Android CI
-
 on:
   push:
     branches: [ main ]
@@ -14,43 +13,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check and write Firebase config
-        shell: bash
+      - name: Write firebase config
         run: |
-          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
-            echo "❌ GOOGLE_SERVICES_JSON is empty!"
-            exit 1
-          fi
-          echo "✅ Secret loaded (${#GOOGLE_SERVICES_JSON} bytes)"
-
-          # Ensure all possible lookup directories exist
-          mkdir -p app
-          mkdir -p app/src
-          mkdir -p app/src/debug
-          mkdir -p app/src/main
-
-          # Write the file in each location
+          mkdir -p app src/debug src/main
           echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
-          echo "$GOOGLE_SERVICES_JSON" > app/src/google-services.json
-          echo "$GOOGLE_SERVICES_JSON" > app/src/debug/google-services.json
-          echo "$GOOGLE_SERVICES_JSON" > app/src/main/google-services.json
-
-          - name: Debug: list app/ tree
-            shell: bash
-            run: |
-          echo "---- app/ tree ----"
-          find app -maxdepth 3 -type f | sed 's/^/ /'
-
-      - name: Set up JDK 11
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: '11'
-
-      - name: Make Gradle wrapper executable
+          echo "$GOOGLE_SERVICES_JSON" > src/google-services.json
         shell: bash
-        run: chmod +x ./gradlew
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
 
-      - name: Build with Gradle
+      - name: Debug listing
+        run: |
+          echo "app/:"
+          ls -1 app
+          echo "src/:"
+          ls -1 src
         shell: bash
+
+      - name: Build
         run: ./gradlew assembleDebug --stacktrace --no-daemon
+        shell: bash

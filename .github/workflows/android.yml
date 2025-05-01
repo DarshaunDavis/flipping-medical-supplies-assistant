@@ -1,5 +1,4 @@
 name: Android CI
-
 on:
   push:
     branches: [ main ]
@@ -12,16 +11,29 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+      - name: Write firebase config
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          mkdir -p app src/debug src/main
+          echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          echo "$GOOGLE_SERVICES_JSON" > src/google-services.json
 
-      - name: Make Gradle executable
+      - name: Debug listing
+        shell: bash
+        run: |
+          echo "Contents of app/:"
+          ls -1 app
+          echo "Contents of src/:"
+          ls -1 src
+
+      - name: Make Gradle wrapper executable
+        shell: bash
         run: chmod +x ./gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew build
+      - name: Build
+        shell: bash
+        run: ./gradlew assembleDebug --stacktrace --no-daemon

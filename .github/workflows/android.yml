@@ -35,9 +35,9 @@ jobs:
           echo "$GOOGLE_SERVICES_JSON" > app/src/debug/google-services.json
           echo "$GOOGLE_SERVICES_JSON" > app/src/main/google-services.json
 
-      - name: Debug: list app/ tree
-        shell: bash
-        run: |
+          - name: Debug: list app/ tree
+            shell: bash
+            run: |
           echo "---- app/ tree ----"
           find app -maxdepth 3 -type f | sed 's/^/ /'
 

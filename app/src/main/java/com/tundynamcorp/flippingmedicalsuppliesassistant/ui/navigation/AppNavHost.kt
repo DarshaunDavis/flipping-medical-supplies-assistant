@@ -3,7 +3,9 @@ package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.navigation
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -13,6 +15,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.PriceHistory
@@ -33,6 +36,10 @@ fun AppNavHost() {
     val navController = rememberNavController()
     val authVm: AuthViewModel = viewModel()
 
+    // Observe current Firebase user
+    val user by authVm.user.collectAsState()
+
+    // Dialog visibility state
     var showLogin by remember { mutableStateOf(false) }
     var showRegister by remember { mutableStateOf(false) }
 
@@ -44,13 +51,13 @@ fun AppNavHost() {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // …inside Scaffold’s Column, instead of Row { … }…
+            // Top logo + login/logout link
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                // 1️⃣ Logo, centered in the Box
+                // Centered logo
                 Image(
                     painter = painterResource(R.drawable.fmsalogo),
                     contentDescription = "App logo",
@@ -59,50 +66,55 @@ fun AppNavHost() {
                         .align(Alignment.Center)
                 )
 
-                // 2️⃣ "Login" text, aligned to the box center and then shifted right
+                // Conditional Login / Logout link
                 Text(
-                    text = "Login",
-                    style = MaterialTheme.typography.bodyLarge
-                        .copy(color = MaterialTheme.colorScheme.primary),
+                    text = if (user == null) "Login" else "Logout",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.primary
+                    ),
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .offset(x = 60.dp + 60.dp)  // 60 = half logo width, 16 = gap
-                        .clickable { showLogin = true }
+                        // shift right of logo: half logo width (60.dp) + spacing (16.dp)
+                        .offset(x = 60.dp + 60.dp)
+                        .clickable {
+                            if (user == null) {
+                                showLogin = true
+                            } else {
+                                authVm.signOut()
+                            }
+                        }
                 )
             }
 
-
-            // Show/hide the two dialogs
+            // Auth dialogs
             if (showLogin) {
                 LoginDialog(
-                    onDismiss      = { showLogin = false },
+                    onDismiss = { showLogin = false },
                     onRegisterClick = {
                         showLogin = false
                         showRegister = true
                     },
                     onLoginSuccess = {
                         showLogin = false
-                        // maybe navigate or refresh UI
                     },
                     authViewModel = authVm
                 )
             }
             if (showRegister) {
                 RegisterDialog(
-                    onDismiss         = { showRegister = false },
-                    onSignInClick     = {
+                    onDismiss = { showRegister = false },
+                    onSignInClick = {
                         showRegister = false
                         showLogin = true
                     },
                     onRegisterSuccess = {
                         showRegister = false
-                        // maybe auto-login or show success toast
                     },
                     authViewModel = authVm
                 )
             }
 
-            // ── NAV HOST CONTENT ──
+            // Main content
             Box(Modifier.weight(1f)) {
                 NavHost(navController, startDestination = "home", Modifier.fillMaxSize()) {
                     composable("home") {
@@ -113,8 +125,8 @@ fun AppNavHost() {
                         var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
                         HomeScreen(
-                            products      = products,
-                            query         = query,
+                            products = products,
+                            query = query,
                             onQueryChange = { homeVm.onQueryChanged(it) },
                             onProductClick = { prod ->
                                 homeVm.loadPriceHistory(prod.category, prod.barcode)
@@ -126,10 +138,10 @@ fun AppNavHost() {
                             ?.takeIf { ph != null }
                             ?.let { prod ->
                                 PriceHistoryDialog(
-                                    title       = prod.description,
+                                    title = prod.description,
                                     lastUpdated = ph!!.lastUpdated,
-                                    prices      = ph!!.prices,
-                                    onDismiss   = {
+                                    prices = ph!!.prices,
+                                    onDismiss = {
                                         homeVm.clearPriceHistory()
                                         selectedProduct = null
                                     }

@@ -1,48 +1,35 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginDialog(
+    authViewModel: AuthViewModel,
     onDismiss: () -> Unit,
     onRegisterClick: () -> Unit,
-    onLoginSuccess: () -> Unit,
-    authViewModel: AuthViewModel = viewModel()
+    onLoginSuccess: () -> Unit
 ) {
-    val focusManager = LocalFocusManager.current
-
-    var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var loading by rememberSaveable { mutableStateOf(false) }
-    var errorMsg by rememberSaveable { mutableStateOf<String?>(null) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Login") },
+        title = { Text("Sign In") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -51,63 +38,59 @@ fun LoginDialog(
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+                    )
                 )
+
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text("Password") },
                     singleLine = true,
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    trailingIcon = {
+                        Icon(
+                            imageVector = if (passwordVisible)
+                                Icons.Filled.VisibilityOff
+                            else
+                                Icons.Filled.Visibility,
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            modifier = Modifier.clickable {
+                                passwordVisible = !passwordVisible
+                            }
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = { focusManager.clearFocus() }
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+                    )
                 )
-                errorMsg?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Spacer(Modifier.height(4.dp))
-                TextButton(onClick = {
-                    // switch to register dialog
-                    onDismiss()
-                    onRegisterClick()
-                }) {
-                    Text("Don't have an account? Register")
+
+                if (errorMsg != null) {
+                    Text(errorMsg!!, color = MaterialTheme.colorScheme.error)
                 }
             }
         },
         confirmButton = {
-            Button(
+            TextButton(
                 onClick = {
                     loading = true
-                    errorMsg = null
                     authViewModel.signIn(email.trim(), password) { success, err ->
                         loading = false
-                        if (success) {
-                            onLoginSuccess()
-                        } else {
-                            errorMsg = err ?: "Login failed"
-                        }
+                        if (success) onLoginSuccess()
+                        else errorMsg = err
                     }
                 },
                 enabled = email.isNotBlank() && password.isNotBlank() && !loading
             ) {
-                if (loading) {
-                    CircularProgressIndicator(modifier = Modifier.height(20.dp))
-                } else {
-                    Text("Login")
-                }
+                Text(if (loading) "Signing in…" else "Sign In")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            TextButton(onClick = onRegisterClick) {
+                Text("Register")
             }
         }
     )

@@ -1,26 +1,19 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -33,17 +26,20 @@ fun RegisterDialog(
 ) {
     val focusManager = LocalFocusManager.current
 
-    var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var confirm by rememberSaveable { mutableStateOf("") }
-    var loading by rememberSaveable { mutableStateOf(false) }
-    var errorMsg by rememberSaveable { mutableStateOf<String?>(null) }
+    var email           by rememberSaveable { mutableStateOf("") }
+    var password        by rememberSaveable { mutableStateOf("") }
+    var confirmPassword by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var confirmVisible  by rememberSaveable { mutableStateOf(false) }
+    var loading         by rememberSaveable { mutableStateOf(false) }
+    var errorMsg        by rememberSaveable { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Register") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Email
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -58,11 +54,29 @@ fun RegisterDialog(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Password
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text("Password") },
                     singleLine = true,
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    trailingIcon = {
+                        Icon(
+                            imageVector = if (passwordVisible)
+                                Icons.Default.VisibilityOff
+                            else
+                                Icons.Default.Visibility,
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            modifier = Modifier.clickable {
+                                passwordVisible = !passwordVisible
+                            }
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Next
@@ -72,11 +86,29 @@ fun RegisterDialog(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Confirm Password
                 OutlinedTextField(
-                    value = confirm,
-                    onValueChange = { confirm = it },
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
                     label = { Text("Confirm Password") },
                     singleLine = true,
+                    visualTransformation = if (confirmVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    trailingIcon = {
+                        Icon(
+                            imageVector = if (confirmVisible)
+                                Icons.Default.VisibilityOff
+                            else
+                                Icons.Default.Visibility,
+                            contentDescription = if (confirmVisible) "Hide text" else "Show text",
+                            modifier = Modifier.clickable {
+                                confirmVisible = !confirmVisible
+                            }
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done
@@ -86,8 +118,13 @@ fun RegisterDialog(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Error message
                 errorMsg?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+
                 Spacer(Modifier.height(4.dp))
+
+                // Link to sign in
                 TextButton(onClick = {
                     onDismiss()
                     onSignInClick()
@@ -97,28 +134,22 @@ fun RegisterDialog(
             }
         },
         confirmButton = {
-            val passwordsMatch = password.isNotBlank() && password == confirm
+            val passwordsMatch = password.isNotBlank() && password == confirmPassword
             Button(
                 onClick = {
                     loading = true
                     errorMsg = null
                     authViewModel.register(email.trim(), password) { success, err ->
                         loading = false
-                        if (success) {
-                            onRegisterSuccess()
-                        } else {
-                            errorMsg = err ?: "Registration failed"
-                        }
+                        if (success) onRegisterSuccess()
+                        else errorMsg = err ?: "Registration failed"
                     }
                 },
-                enabled = email.isNotBlank()
-                        && password.isNotBlank()
-                        && confirm.isNotBlank()
-                        && passwordsMatch
-                        && !loading
+                enabled = listOf(email, password, confirmPassword).all { it.isNotBlank() }
+                        && passwordsMatch && !loading
             ) {
                 if (loading) {
-                    CircularProgressIndicator(modifier = Modifier.height(20.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 } else {
                     Text("Register")
                 }

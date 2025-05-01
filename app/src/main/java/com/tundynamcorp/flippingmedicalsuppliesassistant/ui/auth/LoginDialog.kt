@@ -11,25 +11,32 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginDialog(
-    authViewModel: AuthViewModel,
+    // Make sure you're bringing in your AuthViewModel class here:
+    authViewModel: AuthViewModel = viewModel(),
     onDismiss: () -> Unit,
     onRegisterClick: () -> Unit,
     onLoginSuccess: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var email          by remember { mutableStateOf("") }
+    var password       by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var loading by remember { mutableStateOf(false) }
-    var errorMsg by remember { mutableStateOf<String?>(null) }
+    var loading        by remember { mutableStateOf(false) }
+    var errorMsg       by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Sign In") },
         text = {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -56,7 +63,7 @@ fun LoginDialog(
                                 Icons.Filled.VisibilityOff
                             else
                                 Icons.Filled.Visibility,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            contentDescription = null,
                             modifier = Modifier.clickable {
                                 passwordVisible = !passwordVisible
                             }
@@ -68,8 +75,8 @@ fun LoginDialog(
                     )
                 )
 
-                if (errorMsg != null) {
-                    Text(errorMsg!!, color = MaterialTheme.colorScheme.error)
+                errorMsg?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
                 }
             }
         },
@@ -77,7 +84,11 @@ fun LoginDialog(
             TextButton(
                 onClick = {
                     loading = true
-                    authViewModel.signIn(email.trim(), password) { success, err ->
+                    // Now the compiler will see signIn(...)
+                    authViewModel.signIn(
+                        email.trim(),
+                        password
+                    ) { success: Boolean, err: String? ->
                         loading = false
                         if (success) onLoginSuccess()
                         else errorMsg = err

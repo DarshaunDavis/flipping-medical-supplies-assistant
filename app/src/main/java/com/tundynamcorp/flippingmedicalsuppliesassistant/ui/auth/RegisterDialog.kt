@@ -26,6 +26,7 @@ fun RegisterDialog(
 ) {
     val focusManager = LocalFocusManager.current
 
+    var name            by rememberSaveable { mutableStateOf("") }
     var email           by rememberSaveable { mutableStateOf("") }
     var password        by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
@@ -39,6 +40,22 @@ fun RegisterDialog(
         title = { Text("Register") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // ✏️ Name field
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 // Email
                 OutlinedTextField(
                     value = email,
@@ -61,17 +78,15 @@ fun RegisterDialog(
                     onValueChange = { password = it },
                     label = { Text("Password") },
                     singleLine = true,
-                    visualTransformation = if (passwordVisible)
-                        VisualTransformation.None
-                    else
-                        PasswordVisualTransformation(),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None
+                    else PasswordVisualTransformation(),
                     trailingIcon = {
                         Icon(
                             imageVector = if (passwordVisible)
                                 Icons.Default.VisibilityOff
                             else
                                 Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            contentDescription = null,
                             modifier = Modifier.clickable {
                                 passwordVisible = !passwordVisible
                             }
@@ -93,17 +108,15 @@ fun RegisterDialog(
                     onValueChange = { confirmPassword = it },
                     label = { Text("Confirm Password") },
                     singleLine = true,
-                    visualTransformation = if (confirmVisible)
-                        VisualTransformation.None
-                    else
-                        PasswordVisualTransformation(),
+                    visualTransformation = if (confirmVisible) VisualTransformation.None
+                    else PasswordVisualTransformation(),
                     trailingIcon = {
                         Icon(
                             imageVector = if (confirmVisible)
                                 Icons.Default.VisibilityOff
                             else
                                 Icons.Default.Visibility,
-                            contentDescription = if (confirmVisible) "Hide text" else "Show text",
+                            contentDescription = null,
                             modifier = Modifier.clickable {
                                 confirmVisible = !confirmVisible
                             }
@@ -119,12 +132,11 @@ fun RegisterDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Error message
+                // Error
                 errorMsg?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
                 Spacer(Modifier.height(4.dp))
 
-                // Link to sign in
                 TextButton(onClick = {
                     onDismiss()
                     onSignInClick()
@@ -139,20 +151,22 @@ fun RegisterDialog(
                 onClick = {
                     loading = true
                     errorMsg = null
-                    authViewModel.register(email.trim(), password) { success, err ->
+                    // 🚀 Pass name into the new register API
+                    authViewModel.register(name, email.trim(), password) { success, err ->
                         loading = false
                         if (success) onRegisterSuccess()
-                        else errorMsg = err ?: "Registration failed"
+                        else          errorMsg = err ?: "Registration failed"
                     }
                 },
-                enabled = listOf(email, password, confirmPassword).all { it.isNotBlank() }
-                        && passwordsMatch && !loading
+                enabled = name.isNotBlank() &&
+                        email.isNotBlank() &&
+                        password.isNotBlank() &&
+                        confirmPassword.isNotBlank() &&
+                        passwordsMatch &&
+                        !loading
             ) {
-                if (loading) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                } else {
-                    Text("Register")
-                }
+                if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                else             Text("Register")
             }
         },
         dismissButton = {

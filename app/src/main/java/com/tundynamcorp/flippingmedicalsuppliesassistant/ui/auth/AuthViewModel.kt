@@ -9,15 +9,28 @@ import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 
 class AuthViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val db   = Firebase.database.reference
 
-    // Holds the current FirebaseUser (null if signed out)
+    // 1️⃣ Raw user flow (FirebaseUser? → emits null when signed out)
     private val _user = MutableStateFlow(auth.currentUser)
-    val user: StateFlow<FirebaseUser?> = _user
+    val user: StateFlow<FirebaseUser?> = _user.asStateFlow()
+
+    // 2️⃣ Derived displayName flow (String? from the user’s Firebase profile)
+    val displayName: StateFlow<String?> = user
+        .map { it?.displayName }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = auth.currentUser?.displayName
+        )
 
     /** Sign in existing user */
     fun signIn(
@@ -44,7 +57,7 @@ class AuthViewModel : ViewModel() {
         password: String,
         onResult: (success: Boolean, errorMsg: String?) -> Unit
     ) {
-        // Capitalize each word in the provided name
+        // Capitalize each word
         val displayName = name
             .trim()
             .split("\\s+".toRegex())
@@ -60,14 +73,13 @@ class AuthViewModel : ViewModel() {
                         .build()
                     user.updateProfile(profileUpdate)
                         .addOnCompleteListener {
-                            // 2) Write displayName into Realtime Database at /users/{uid}/displayName
+                            // 2) Write to Realtime Database at /users/{uid}/displayName
                             db.child("users")
                                 .child(user.uid)
                                 .child("displayName")
                                 .setValue(displayName)
                                 .addOnCompleteListener { dbTask ->
                                     if (dbTask.isSuccessful) {
-                                        // Everything succeeded
                                         _user.value = user
                                         onResult(true, null)
                                     } else {

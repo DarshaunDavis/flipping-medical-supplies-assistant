@@ -3,19 +3,14 @@ package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.navigation
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-
+import androidx.navigation.compose.*
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.PriceHistory
@@ -30,16 +25,34 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDia
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice.InvoiceScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.scan.ScanScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsScreen
+import java.util.*
 
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
     val authVm: AuthViewModel = viewModel()
 
-    // Observe current Firebase user
-    val user by authVm.user.collectAsState()
+    // 1️⃣ Observe the current user and extract displayName
+    val firebaseUser by authVm.user.collectAsState()
+    val displayName = firebaseUser?.displayName
 
-    // Dialog visibility state
+    // 2️⃣ Compute a time-based greeting
+    val greetingWord = remember {
+        when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
+            in 5..11  -> "Good"
+            in 12..17 -> "Good"
+            else      -> "Good"
+        }
+    }
+    val greetingRest = remember {
+        when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
+            in 5..11  -> "Morning"
+            in 12..17 -> "Afternoon"
+            else      -> "Evening"
+        }
+    }
+
+    // 3️⃣ Control showing the dialogs
     var showLogin by remember { mutableStateOf(false) }
     var showRegister by remember { mutableStateOf(false) }
 
@@ -51,70 +64,85 @@ fun AppNavHost() {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Top logo + login/logout link
-            Box(
-                modifier = Modifier
+            // ── Top bar ──
+            Row(
+                Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Centered logo
-                Image(
-                    painter = painterResource(R.drawable.fmsalogo),
-                    contentDescription = "App logo",
-                    modifier = Modifier
-                        .size(120.dp)
-                        .align(Alignment.Center)
-                )
-
-                // Conditional Login / Logout link
-                Text(
-                    text = if (user == null) "Login" else "Logout",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.primary
-                    ),
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        // shift right of logo: half logo width (60.dp) + spacing (16.dp)
-                        .offset(x = 60.dp + 60.dp)
-                        .clickable {
-                            if (user == null) {
-                                showLogin = true
-                            } else {
-                                authVm.signOut()
-                            }
+                // Left column (greeting)
+                Box(Modifier.weight(1f)) {
+                    if (!displayName.isNullOrBlank()) {
+                        Column(
+                            Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(start = 16.dp)
+                        ) {
+                            Text(greetingWord,    style = MaterialTheme.typography.bodyLarge)
+                            Text("$greetingRest,\n$displayName!", style = MaterialTheme.typography.bodyLarge)
                         }
-                )
+                    }
+                }
+
+                // Center column (logo)
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Image(
+                        painter = painterResource(R.drawable.fmsalogo),
+                        contentDescription = "App logo",
+                        modifier = Modifier.size(120.dp)
+                    )
+                }
+
+                // Right column (login/logout)
+                Box(Modifier.weight(1f)) {
+                    Text(
+                        text = if (firebaseUser == null) "Login" else "Logout",
+                        style = MaterialTheme.typography.bodyLarge
+                            .copy(color = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 16.dp)
+                            .clickable {
+                                if (firebaseUser == null) showLogin = true
+                                else authVm.signOut()
+                            }
+                    )
+                }
             }
 
-            // Auth dialogs
+            // Login dialog
             if (showLogin) {
                 LoginDialog(
-                    onDismiss = { showLogin = false },
-                    onRegisterClick = {
+                    authViewModel    = authVm,
+                    onDismiss        = { showLogin = false },
+                    onRegisterClick  = {
                         showLogin = false
                         showRegister = true
                     },
-                    onLoginSuccess = {
+                    onLoginSuccess  = {
                         showLogin = false
-                    },
-                    authViewModel = authVm
-                )
-            }
-            if (showRegister) {
-                RegisterDialog(
-                    onDismiss = { showRegister = false },
-                    onSignInClick = {
-                        showRegister = false
-                        showLogin = true
-                    },
-                    onRegisterSuccess = {
-                        showRegister = false
-                    },
-                    authViewModel = authVm
+                    }
                 )
             }
 
-            // Main content
+            // Register dialog
+            if (showRegister) {
+                RegisterDialog(
+                    authViewModel      = authVm,
+                    onDismiss          = { showRegister = false },
+                    onSignInClick      = {
+                        showRegister = false
+                        showLogin = true
+                    },
+                    onRegisterSuccess  = {
+                        showRegister = false
+                    }
+                )
+            }
+
+            // ── Main content ──
             Box(Modifier.weight(1f)) {
                 NavHost(navController, startDestination = "home", Modifier.fillMaxSize()) {
                     composable("home") {
@@ -125,12 +153,12 @@ fun AppNavHost() {
                         var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
                         HomeScreen(
-                            products = products,
-                            query = query,
+                            products      = products,
+                            query         = query,
                             onQueryChange = { homeVm.onQueryChanged(it) },
-                            onProductClick = { prod ->
-                                homeVm.loadPriceHistory(prod.category, prod.barcode)
-                                selectedProduct = prod
+                            onProductClick = {
+                                homeVm.loadPriceHistory(it.category, it.barcode)
+                                selectedProduct = it
                             }
                         )
 
@@ -138,10 +166,10 @@ fun AppNavHost() {
                             ?.takeIf { ph != null }
                             ?.let { prod ->
                                 PriceHistoryDialog(
-                                    title = prod.description,
+                                    title       = prod.description,
                                     lastUpdated = ph!!.lastUpdated,
-                                    prices = ph!!.prices,
-                                    onDismiss = {
+                                    prices      = ph!!.prices,
+                                    onDismiss   = {
                                         homeVm.clearPriceHistory()
                                         selectedProduct = null
                                     }

@@ -7,29 +7,24 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class AuthViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val db   = Firebase.database.reference
 
-    // 1️⃣ Raw user flow (FirebaseUser? → emits null when signed out)
+    // 1️⃣ Raw user flow
     private val _user = MutableStateFlow(auth.currentUser)
     val user: StateFlow<FirebaseUser?> = _user.asStateFlow()
 
-    // 2️⃣ Derived displayName flow (String? from the user’s Firebase profile)
+    // 2️⃣ displayName flow from FirebaseUser.profile
     val displayName: StateFlow<String?> = user
         .map { it?.displayName }
         .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = auth.currentUser?.displayName
+            viewModelScope,
+            SharingStarted.Eagerly,
+            auth.currentUser?.displayName
         )
 
     /** Sign in existing user */
@@ -50,14 +45,14 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /** Register a new user with display name */
+    /** Register a new user with displayName in both Auth profile & RTDB */
     fun register(
         name: String,
         email: String,
         password: String,
         onResult: (success: Boolean, errorMsg: String?) -> Unit
     ) {
-        // Capitalize each word
+        // capitalize each word
         val displayName = name
             .trim()
             .split("\\s+".toRegex())
@@ -67,25 +62,27 @@ class AuthViewModel : ViewModel() {
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener {
                     val user = auth.currentUser!!
-                    // 1) Update FirebaseAuth profile
+                    // 1) update FirebaseAuth profile
                     val profileUpdate = UserProfileChangeRequest.Builder()
                         .setDisplayName(displayName)
                         .build()
                     user.updateProfile(profileUpdate)
-                        .addOnCompleteListener {
-                            // 2) Write to Realtime Database at /users/{uid}/displayName
+                        .addOnSuccessListener {
+                            // 2) mirror into RTDB under /users/{uid}/displayName
                             db.child("users")
                                 .child(user.uid)
                                 .child("displayName")
                                 .setValue(displayName)
-                                .addOnCompleteListener { dbTask ->
-                                    if (dbTask.isSuccessful) {
-                                        _user.value = user
-                                        onResult(true, null)
-                                    } else {
-                                        onResult(false, dbTask.exception?.localizedMessage)
-                                    }
+                                .addOnSuccessListener {
+                                    _user.value = user
+                                    onResult(true, null)
                                 }
+                                .addOnFailureListener { ex ->
+                                    onResult(false, ex.localizedMessage)
+                                }
+                        }
+                        .addOnFailureListener { ex ->
+                            onResult(false, ex.localizedMessage)
                         }
                 }
                 .addOnFailureListener { ex ->
@@ -94,7 +91,48 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /** Sign out the current user */
+    /** **NEW** – update an existing user’s displayName in both Auth profile & RTDB */
+    fun updateDisplayName(
+        name: String,
+        onResult: (success: Boolean, errorMsg: String?) -> Unit
+    ) {
+        // capitalize each word
+        val displayName = name
+            .trim()
+            .split("\\s+".toRegex())
+            .joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }
+
+        val user = auth.currentUser
+        if (user == null) {
+            onResult(false, "No user signed in")
+            return
+        }
+
+        // 1) update Auth profile
+        val profileUpdate = UserProfileChangeRequest.Builder()
+            .setDisplayName(displayName)
+            .build()
+        user.updateProfile(profileUpdate)
+            .addOnSuccessListener {
+                // 2) mirror into RTDB
+                db.child("users")
+                    .child(user.uid)
+                    .child("displayName")
+                    .setValue(displayName)
+                    .addOnSuccessListener {
+                        _user.value = user
+                        onResult(true, null)
+                    }
+                    .addOnFailureListener { ex ->
+                        onResult(false, ex.localizedMessage)
+                    }
+            }
+            .addOnFailureListener { ex ->
+                onResult(false, ex.localizedMessage)
+            }
+    }
+
+    /** Sign out */
     fun signOut() {
         auth.signOut()
         _user.value = null

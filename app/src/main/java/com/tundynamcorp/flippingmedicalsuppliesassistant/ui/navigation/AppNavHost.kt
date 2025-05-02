@@ -15,104 +15,96 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.PriceHistory
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.admin.AdminScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.LoginDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.RegisterDialog
-import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.admin.AdminScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigationBar
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice.InvoiceScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.scan.ScanScreen
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsScreen
 import java.util.*
 
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
+
+    // 1) Auth
     val authVm: AuthViewModel = viewModel()
-
-    // 1️⃣ Observe the current user and extract displayName
     val firebaseUser by authVm.user.collectAsState()
+
+    // 2) Profile store
+    val settingsVm: SettingsViewModel = viewModel()
+    val profile by settingsVm.profileInfo.collectAsState()
+
+    // 3) Compute greeting name: use profile.name if set, else Firebase displayName
     val displayName = firebaseUser?.displayName
-
-    // 2️⃣ Compute a time-based greeting
-    val greetingWord = remember {
-        when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
-            in 5..11  -> "Good"
-            in 12..17 -> "Good"
-            else      -> "Good"
-        }
-    }
-    val greetingRest = remember {
-        when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
-            in 5..11  -> "Morning"
-            in 12..17 -> "Afternoon"
-            else      -> "Evening"
-        }
+    val greetingName = remember(profile.name, displayName) {
+        profile.name.ifBlank { displayName.orEmpty() }
     }
 
-    // 3️⃣ Control showing the dialogs
+    // 4) Time‐of‐day
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val greetingWord = if (hour in 5..17) "Good" else "Good"
+    val greetingRest = when (hour) {
+        in 5..11  -> "Morning"
+        in 12..17 -> "Afternoon"
+        else      -> "Evening"
+    }
+
+    // dialog state
     var showLogin by remember { mutableStateOf(false) }
     var showRegister by remember { mutableStateOf(false) }
 
-    Scaffold(
-        bottomBar = { BottomNavigationBar(navController) }
-    ) { innerPadding ->
+    Scaffold(bottomBar = { BottomNavigationBar(navController) }) { innerPadding ->
         Column(
             Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // ── Top bar ──
+            // ── Top Row ──
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Left column (greeting)
-                Box(Modifier.weight(1f)) {
-                    if (!displayName.isNullOrBlank()) {
-                        Column(
-                            Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(start = 16.dp)
-                        ) {
-                            Text(greetingWord,    style = MaterialTheme.typography.bodyLarge)
-                            Text("$greetingRest,\n$displayName!", style = MaterialTheme.typography.bodyLarge)
-                        }
+                // 1️⃣ Left: greeting
+                if (greetingName.isNotBlank()) {
+                    Column(Modifier.padding(start = 16.dp)) {
+                        Text(greetingWord, style = MaterialTheme.typography.bodyLarge)
+                        Text("$greetingRest,\n$greetingName!", style = MaterialTheme.typography.bodyLarge)
                     }
+                } else {
+                    Spacer(Modifier.width(16.dp))
                 }
 
-                // Center column (logo)
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Image(
-                        painter = painterResource(R.drawable.fmsalogo),
-                        contentDescription = "App logo",
-                        modifier = Modifier.size(120.dp)
-                    )
-                }
+                // 2️⃣ Center: logo
+                Image(
+                    painter = painterResource(R.drawable.fmsalogo),
+                    contentDescription = "App logo",
+                    modifier = Modifier.size(120.dp)
+                )
 
-                // Right column (login/logout)
-                Box(Modifier.weight(1f)) {
-                    Text(
-                        text = if (firebaseUser == null) "Login" else "Logout",
-                        style = MaterialTheme.typography.bodyLarge
-                            .copy(color = MaterialTheme.colorScheme.primary),
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 16.dp)
-                            .clickable {
-                                if (firebaseUser == null) showLogin = true
-                                else authVm.signOut()
-                            }
-                    )
-                }
+                // 3️⃣ Right: login/logout
+                Text(
+                    text = if (firebaseUser == null) "Login" else "Logout",
+                    style = MaterialTheme.typography.bodyLarge
+                        .copy(color = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier
+                        .padding(end = 16.dp)
+                        .clickable {
+                            if (firebaseUser == null) showLogin = true
+                            else authVm.signOut()
+                        }
+                )
             }
 
-            // Login dialog
+            // ── Auth dialogs ──
             if (showLogin) {
                 LoginDialog(
                     authViewModel    = authVm,
@@ -121,13 +113,9 @@ fun AppNavHost() {
                         showLogin = false
                         showRegister = true
                     },
-                    onLoginSuccess  = {
-                        showLogin = false
-                    }
+                    onLoginSuccess   = { showLogin = false }
                 )
             }
-
-            // Register dialog
             if (showRegister) {
                 RegisterDialog(
                     authViewModel      = authVm,
@@ -136,9 +124,7 @@ fun AppNavHost() {
                         showRegister = false
                         showLogin = true
                     },
-                    onRegisterSuccess  = {
-                        showRegister = false
-                    }
+                    onRegisterSuccess  = { showRegister = false }
                 )
             }
 
@@ -156,9 +142,9 @@ fun AppNavHost() {
                             products      = products,
                             query         = query,
                             onQueryChange = { homeVm.onQueryChanged(it) },
-                            onProductClick = {
-                                homeVm.loadPriceHistory(it.category, it.barcode)
-                                selectedProduct = it
+                            onProductClick = { prod ->
+                                homeVm.loadPriceHistory(prod.category, prod.barcode)
+                                selectedProduct = prod
                             }
                         )
 
@@ -183,7 +169,7 @@ fun AppNavHost() {
                 }
             }
 
-            // Banner ad placeholder
+            // ── Banner Ad ──
             Box(
                 Modifier
                     .fillMaxWidth()

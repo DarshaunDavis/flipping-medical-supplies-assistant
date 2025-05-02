@@ -9,27 +9,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 
-/**
- * SettingsHost: two tabs, delegating to ProfileTab and AccountTab.
- * Manages local profileInfo state for editing.
- */
 @Composable
 fun SettingsScreen(
-    settingsViewModel: SettingsViewModel = viewModel()) {
+    settingsViewModel: SettingsViewModel = viewModel(),
+    authViewModel: AuthViewModel       = viewModel()
+) {
     val tabs = listOf("Profile", "Account")
     var selectedTab by remember { mutableIntStateOf(0) }
-
-    // Pull the saved profile out of the ViewModel
     val profileInfo by settingsViewModel.profileInfo.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTab) {
-            tabs.forEachIndexed { index, title ->
+            tabs.forEachIndexed { i, title ->
                 Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    text = { Text(title) }
+                    selected = selectedTab == i,
+                    onClick  = { selectedTab = i },
+                    text     = { Text(title) }
                 )
             }
         }
@@ -37,7 +34,14 @@ fun SettingsScreen(
         when (selectedTab) {
             0 -> ProfileTab(
                 profileInfo = profileInfo,
-                onSave = { settingsViewModel.updateProfile(it) }
+                onSave = { newInfo ->
+                    // 1) Persist to DataStore
+                    settingsViewModel.updateProfile(newInfo)
+                    // 2) Propagate the updated name into FirebaseAuth & RTDB
+                    authViewModel.updateDisplayName(newInfo.name) { success, _ ->
+                        // you could show a toast on failure if you like
+                    }
+                }
             )
             1 -> AccountTab()
         }

@@ -8,10 +8,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -33,19 +33,18 @@ fun ProfileTab(
     onSave: (SellerInfo) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
-
     var editing by rememberSaveable { mutableStateOf(false) }
 
-    // Local editable state, init from profileInfo
-    var name       by rememberSaveable { mutableStateOf(profileInfo.name) }
-    var dba        by rememberSaveable { mutableStateOf(profileInfo.dba.orEmpty()) }
-    var address1   by rememberSaveable { mutableStateOf(profileInfo.address1) }
-    var address2   by rememberSaveable { mutableStateOf(profileInfo.address2.orEmpty()) }
-    var city       by rememberSaveable { mutableStateOf(profileInfo.city) }
-    var state      by rememberSaveable { mutableStateOf(profileInfo.state) }
-    var zip        by rememberSaveable { mutableStateOf(profileInfo.zip) }
-    var phone      by rememberSaveable { mutableStateOf(profileInfo.phone) }
-    var email      by rememberSaveable { mutableStateOf(profileInfo.email.orEmpty()) }
+    // local editable copy
+    var name     by rememberSaveable { mutableStateOf(profileInfo.name) }
+    var dba      by rememberSaveable { mutableStateOf(profileInfo.dba.orEmpty()) }
+    var address1 by rememberSaveable { mutableStateOf(profileInfo.address1) }
+    var address2 by rememberSaveable { mutableStateOf(profileInfo.address2.orEmpty()) }
+    var city     by rememberSaveable { mutableStateOf(profileInfo.city) }
+    var state    by rememberSaveable { mutableStateOf(profileInfo.state) }
+    var zip      by rememberSaveable { mutableStateOf(profileInfo.zip) }
+    var phone    by rememberSaveable { mutableStateOf(profileInfo.phone) }
+    var email    by rememberSaveable { mutableStateOf(profileInfo.email.orEmpty()) }
 
     val scrollState = rememberScrollState()
     val statesList = stringArrayResource(id = R.array.states).toList()
@@ -60,33 +59,34 @@ fun ProfileTab(
     ) {
         if (!editing) {
             Text(
-                text = "Edit",
-                modifier = Modifier
+                "Edit",
+                Modifier
                     .align(Alignment.End)
                     .clickable { editing = true },
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(8.dp))
             Column(
-                modifier = Modifier
+                Modifier
                     .fillMaxWidth()
                     .border(1.dp, Color.Gray)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text("Name: ${profileInfo.name}")
-                profileInfo.dba?.takeIf(String::isNotBlank)?.let { Text("DBA: $it") }
+                Text("DBA: ${profileInfo.dba.orEmpty()}")
                 Text("Address Line 1: ${profileInfo.address1}")
-                profileInfo.address2?.takeIf(String::isNotBlank)?.let { Text("Address Line 2: $it") }
+                Text("Address Line 2: ${profileInfo.address2.orEmpty()}")
                 Text("City: ${profileInfo.city}")
                 Text("State: ${profileInfo.state}")
                 Text("Zip Code: ${profileInfo.zip}")
                 Text("Phone: ${profileInfo.phone}")
-                profileInfo.email?.takeIf(String::isNotBlank)?.let { Text("Email: $it") }
+                Text("Email: ${profileInfo.email.orEmpty()}")
             }
         } else {
             Text("Edit Profile", style = MaterialTheme.typography.titleLarge)
 
+            // Name
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -96,12 +96,13 @@ fun ProfileTab(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = {
-                    focusManager.moveFocus(FocusDirection.Down)
-                }),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // DBA
             OutlinedTextField(
                 value = dba,
                 onValueChange = { dba = it },
@@ -111,12 +112,13 @@ fun ProfileTab(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = {
-                    focusManager.moveFocus(FocusDirection.Down)
-                }),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // Address 1
             OutlinedTextField(
                 value = address1,
                 onValueChange = { address1 = it },
@@ -126,12 +128,13 @@ fun ProfileTab(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = {
-                    focusManager.moveFocus(FocusDirection.Down)
-                }),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // Address 2
             OutlinedTextField(
                 value = address2,
                 onValueChange = { address2 = it },
@@ -141,12 +144,13 @@ fun ProfileTab(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = {
-                    focusManager.moveFocus(FocusDirection.Down)
-                }),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // City
             OutlinedTextField(
                 value = city,
                 onValueChange = { city = it },
@@ -156,12 +160,13 @@ fun ProfileTab(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = {
-                    focusManager.moveFocus(FocusDirection.Down)
-                }),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // State spinner
             ExposedDropdownMenuBox(
                 expanded = stateDropdownExpanded,
                 onExpandedChange = { stateDropdownExpanded = it }
@@ -177,10 +182,7 @@ fun ProfileTab(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(
-                            type = MenuAnchorType.PrimaryNotEditable,
-                            enabled = true
-                        )
+                        .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
                 )
                 ExposedDropdownMenu(
                     expanded = stateDropdownExpanded,
@@ -199,6 +201,7 @@ fun ProfileTab(
                 }
             }
 
+            // Zip
             OutlinedTextField(
                 value = zip,
                 onValueChange = { zip = it.filter(Char::isDigit) },
@@ -208,12 +211,13 @@ fun ProfileTab(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = {
-                    focusManager.moveFocus(FocusDirection.Down)
-                }),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // Phone
             OutlinedTextField(
                 value = phone,
                 onValueChange = { phone = it },
@@ -223,31 +227,32 @@ fun ProfileTab(
                     keyboardType = KeyboardType.Phone,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = {
-                    focusManager.moveFocus(FocusDirection.Down)
-                }),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // Email
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = { Text("Email (optional)") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
                     imeAction = ImeAction.Done
                 ),
-                keyboardActions = KeyboardActions(onDone = {
-                    focusManager.clearFocus()
-                }),
+                keyboardActions = KeyboardActions(
+                    onDone = { focusManager.clearFocus() }
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(16.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Button(onClick = { editing = false }) {
@@ -256,15 +261,15 @@ fun ProfileTab(
                 Button(onClick = {
                     onSave(
                         SellerInfo(
-                            name = name,
-                            dba = dba.takeIf(String::isNotBlank),
+                            name     = name,
+                            dba      = dba.takeIf(String::isNotBlank),
                             address1 = address1,
                             address2 = address2.takeIf(String::isNotBlank),
-                            city = city,
-                            state = state,
-                            zip = zip,
-                            phone = phone,
-                            email = email.takeIf(String::isNotBlank)
+                            city     = city,
+                            state    = state,
+                            zip      = zip,
+                            phone    = phone,
+                            email    = email.takeIf(String::isNotBlank)
                         )
                     )
                     editing = false

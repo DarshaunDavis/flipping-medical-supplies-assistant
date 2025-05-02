@@ -43,7 +43,7 @@ fun SettingsScreen(
                     // 1️⃣ Persist into DataStore
                     settingsViewModel.updateProfile(newInfo)
                     // 2️⃣ Mirror *all* fields into RTDB & Auth profile
-                    authViewModel.updateProfile(newInfo) { success, _ ->
+                    authViewModel.updateProfile(newInfo) { _, _ ->
                         // optionally show a Toast on error
                     }
                 }

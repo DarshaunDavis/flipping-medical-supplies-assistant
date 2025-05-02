@@ -18,16 +18,11 @@ class AuthViewModel : ViewModel() {
     private val auth  = FirebaseAuth.getInstance()
     private val dbRef = Firebase.database.reference
 
-    // 1️⃣ FirebaseUser flow
-    private val _user = MutableStateFlow<FirebaseUser?>(auth.currentUser)
+    //  FirebaseUser flow
+    private val _user = MutableStateFlow(auth.currentUser)
     val user: StateFlow<FirebaseUser?> = _user.asStateFlow()
 
-    // 2️⃣ displayName flow, for convenience (e.g. greeting)
-    val displayName: StateFlow<String?> = user
-        .map { it?.displayName }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, auth.currentUser?.displayName)
-
-    // 3️⃣ SellerInfo flow from RTDB
+    //  SellerInfo flow from RTDB
     private val _profileInfo = MutableStateFlow<SellerInfo?>(null)
     val profileInfo: StateFlow<SellerInfo?> = _profileInfo.asStateFlow()
 

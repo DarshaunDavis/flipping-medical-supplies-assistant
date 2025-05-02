@@ -24,7 +24,6 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice.InvoiceScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.scan.ScanScreen
-import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsScreen
 import java.util.*
 
@@ -32,31 +31,26 @@ import java.util.*
 fun AppNavHost() {
     val navController = rememberNavController()
 
-    // 1) Auth
+    // 1️⃣ Authentication
     val authVm: AuthViewModel = viewModel()
     val firebaseUser by authVm.user.collectAsState()
+    val dbProfile   by authVm.profileInfo.collectAsState()
 
-    // 2) Profile store
-    val settingsVm: SettingsViewModel = viewModel()
-    val profile by settingsVm.profileInfo.collectAsState()
+    // 2️⃣ Derive greeting name: prefer DB name, fallback to Auth displayName
+    val rawName = dbProfile?.name.orEmpty().ifBlank { firebaseUser?.displayName.orEmpty() }
+    val greetingName = remember(rawName) { rawName }
 
-    // 3) Compute greeting name: use profile.name if set, else Firebase displayName
-    val displayName = firebaseUser?.displayName
-    val greetingName = remember(profile.name, displayName) {
-        profile.name.ifBlank { displayName.orEmpty() }
-    }
-
-    // 4) Time‐of‐day
+    // 3️⃣ Time of day pieces
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    val greetingWord = if (hour in 5..17) "Good" else "Good"
+    val greetingWord = "Good"
     val greetingRest = when (hour) {
         in 5..11  -> "Morning"
         in 12..17 -> "Afternoon"
         else      -> "Evening"
     }
 
-    // dialog state
-    var showLogin by remember { mutableStateOf(false) }
+    // Dialog state
+    var showLogin    by remember { mutableStateOf(false) }
     var showRegister by remember { mutableStateOf(false) }
 
     Scaffold(bottomBar = { BottomNavigationBar(navController) }) { innerPadding ->
@@ -70,10 +64,10 @@ fun AppNavHost() {
                 Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment   = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // 1️⃣ Left: greeting
+                // Left: greeting
                 if (greetingName.isNotBlank()) {
                     Column(Modifier.padding(start = 16.dp)) {
                         Text(greetingWord, style = MaterialTheme.typography.bodyLarge)
@@ -83,23 +77,26 @@ fun AppNavHost() {
                     Spacer(Modifier.width(16.dp))
                 }
 
-                // 2️⃣ Center: logo
+                // Center: logo
                 Image(
-                    painter = painterResource(R.drawable.fmsalogo),
-                    contentDescription = "App logo",
-                    modifier = Modifier.size(120.dp)
+                    painter             = painterResource(R.drawable.fmsalogo),
+                    contentDescription  = "App logo",
+                    modifier            = Modifier.size(120.dp)
                 )
 
-                // 3️⃣ Right: login/logout
+                // Right: login / logout link
                 Text(
-                    text = if (firebaseUser == null) "Login" else "Logout",
+                    text  = if (firebaseUser == null) "Login" else "Logout",
                     style = MaterialTheme.typography.bodyLarge
                         .copy(color = MaterialTheme.colorScheme.primary),
                     modifier = Modifier
                         .padding(end = 16.dp)
                         .clickable {
-                            if (firebaseUser == null) showLogin = true
-                            else authVm.signOut()
+                            if (firebaseUser == null) {
+                                showLogin = true
+                            } else {
+                                authVm.signOut()
+                            }
                         }
                 )
             }
@@ -107,24 +104,24 @@ fun AppNavHost() {
             // ── Auth dialogs ──
             if (showLogin) {
                 LoginDialog(
-                    authViewModel    = authVm,
-                    onDismiss        = { showLogin = false },
-                    onRegisterClick  = {
-                        showLogin = false
+                    authViewModel   = authVm,
+                    onDismiss       = { showLogin = false },
+                    onRegisterClick = {
+                        showLogin    = false
                         showRegister = true
                     },
-                    onLoginSuccess   = { showLogin = false }
+                    onLoginSuccess = { showLogin = false }
                 )
             }
             if (showRegister) {
                 RegisterDialog(
-                    authViewModel      = authVm,
-                    onDismiss          = { showRegister = false },
-                    onSignInClick      = {
+                    authViewModel     = authVm,
+                    onDismiss         = { showRegister = false },
+                    onSignInClick     = {
                         showRegister = false
-                        showLogin = true
+                        showLogin    = true
                     },
-                    onRegisterSuccess  = { showRegister = false }
+                    onRegisterSuccess = { showRegister = false }
                 )
             }
 

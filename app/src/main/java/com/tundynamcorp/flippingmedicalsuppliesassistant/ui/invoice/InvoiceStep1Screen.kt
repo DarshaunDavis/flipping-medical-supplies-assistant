@@ -5,18 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.*
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -29,11 +19,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
 
-/**
- * Data class representing seller (company) information.
- */
+/** Seller/company info for the invoice form */
 data class SellerInfo(
     val name: String,
     val dba: String?,
@@ -50,15 +39,18 @@ data class SellerInfo(
 @Composable
 fun InvoiceStep1Screen(
     onNext: (SellerInfo) -> Unit,
-    settingsViewModel: SettingsViewModel = viewModel()
+    settingsViewModel: SettingsViewModel = viewModel(),
+    authViewModel: AuthViewModel       = viewModel()
 ) {
-    // 1️⃣ Get the saved profile from the ViewModel
-    val profile by settingsViewModel.profileInfo.collectAsState()
+    // 1️⃣ DataStore copy (local fallback)
+    val localProfile by settingsViewModel.profileInfo.collectAsState()
+    // 2️⃣ RTDB-backed profile (if we’ve ever loaded it)
+    val remoteProfile by authViewModel.profileInfo.collectAsState()
 
-    // 2️⃣ Checkbox state
+    // 3️⃣ “Use profile” toggle
     var useProfile by rememberSaveable { mutableStateOf(false) }
 
-    // 3️⃣ Local form state
+    // 4️⃣ Form state
     var name     by rememberSaveable { mutableStateOf("") }
     var dba      by rememberSaveable { mutableStateOf("") }
     var address1 by rememberSaveable { mutableStateOf("") }
@@ -69,48 +61,43 @@ fun InvoiceStep1Screen(
     var phone    by rememberSaveable { mutableStateOf("") }
     var email    by rememberSaveable { mutableStateOf("") }
 
-    // 4️⃣ When checkbox toggles on/off, copy or clear profile
+    // 5️⃣ Populate / clear when toggling
     LaunchedEffect(useProfile) {
         if (useProfile) {
-            name     = profile.name
-            dba      = profile.dba.orEmpty()
-            address1 = profile.address1
-            address2 = profile.address2.orEmpty()
-            city     = profile.city
-            state    = profile.state
-            zip      = profile.zip
-            phone    = profile.phone
-            email    = profile.email.orEmpty()
+            // prefer RTDB data if available
+            val p = remoteProfile ?: localProfile
+            name     = p.name
+            dba      = p.dba.orEmpty()
+            address1 = p.address1
+            address2 = p.address2.orEmpty()
+            city     = p.city
+            state    = p.state
+            zip      = p.zip
+            phone    = p.phone
+            email    = p.email.orEmpty()
         } else {
-            name = ""
-            dba = ""
-            address1 = ""
-            address2 = ""
-            city = ""
-            state = ""
-            zip = ""
-            phone = ""
-            email = ""
+            name = ""; dba = ""; address1 = ""
+            address2 = ""; city = ""; state = ""
+            zip = ""; phone = ""; email = ""
         }
     }
 
-    // 5️⃣ Focus manager for Next actions
+    // 6️⃣ Focus manager
     val focusManager = LocalFocusManager.current
 
-    // 6️⃣ Dropdown state and scroll
+    // 7️⃣ State dropdown + scroll
     val statesList = stringArrayResource(id = R.array.states).toList()
     var stateDropdownExpanded by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
-    Surface(modifier = Modifier.fillMaxSize()) {
+    Surface(Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Checkbox
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = useProfile,
@@ -121,7 +108,6 @@ fun InvoiceStep1Screen(
                 Text("Use profile information")
             }
 
-            // Form title
             Text("Step 1: Seller Information", style = MaterialTheme.typography.titleLarge)
 
             // Name
@@ -156,7 +142,7 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Address 1
+            // Address Line 1
             OutlinedTextField(
                 value = address1,
                 onValueChange = { address1 = it },
@@ -172,7 +158,7 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Address 2
+            // Address Line 2
             OutlinedTextField(
                 value = address2,
                 onValueChange = { address2 = it },
@@ -230,7 +216,7 @@ fun InvoiceStep1Screen(
                     onDismissRequest = { stateDropdownExpanded = false }
                 ) {
                     statesList.forEach { s ->
-                        androidx.compose.material3.DropdownMenuItem(
+                        DropdownMenuItem(
                             text = { Text(s) },
                             onClick = {
                                 state = s
@@ -278,7 +264,7 @@ fun InvoiceStep1Screen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = { Text("Email (optional)") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
@@ -292,7 +278,6 @@ fun InvoiceStep1Screen(
 
             Spacer(Modifier.height(24.dp))
 
-            // Next
             Button(
                 onClick = {
                     onNext(

@@ -2,23 +2,28 @@ package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.collectAsState
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 
 @Composable
 fun SettingsScreen(
     settingsViewModel: SettingsViewModel = viewModel(),
-    authViewModel: AuthViewModel       = viewModel()
+    authViewModel:    AuthViewModel       = viewModel()
 ) {
     val tabs = listOf("Profile", "Account")
     var selectedTab by remember { mutableIntStateOf(0) }
-    val profileInfo by settingsViewModel.profileInfo.collectAsState()
+
+    // DataStore-backed fallback
+    val dsProfile by settingsViewModel.profileInfo.collectAsState()
+
+    // RTDB-backed profile (null if not loaded yet)
+    val dbProfile by authViewModel.profileInfo.collectAsState()
+
+    // Read-only profile: prefer DB, fallback to DataStore
+    val readOnlyProfile = dbProfile ?: dsProfile
 
     Column(Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTab) {
@@ -33,13 +38,13 @@ fun SettingsScreen(
 
         when (selectedTab) {
             0 -> ProfileTab(
-                profileInfo = profileInfo,
+                profileInfo = readOnlyProfile,
                 onSave = { newInfo ->
-                    // 1) Persist to DataStore
+                    // 1️⃣ Persist into DataStore
                     settingsViewModel.updateProfile(newInfo)
-                    // 2) Propagate the updated name into FirebaseAuth & RTDB
-                    authViewModel.updateDisplayName(newInfo.name) { success, _ ->
-                        // you could show a toast on failure if you like
+                    // 2️⃣ Mirror *all* fields into RTDB & Auth profile
+                    authViewModel.updateProfile(newInfo) { success, _ ->
+                        // optionally show a Toast on error
                     }
                 }
             )

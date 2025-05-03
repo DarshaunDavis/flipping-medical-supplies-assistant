@@ -1,24 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Your app’s default theme -->
     <style name="Theme.FlippingMedicalSuppliesAssistant"
-        parent="android:Theme.Material.Light.NoActionBar">
-        <!-- Brand colors -->
-        <item name="colorPrimary">#1E4A78</item>
-        <item name="colorPrimaryVariant">#15375A</item>
-        <item name="colorSecondary">#72B8E0</item>
+        parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Brand colors (contrast-swapped as before) -->
+        <item name="colorPrimary">#72B8E0</item>
+        <item name="colorPrimaryVariant">#4A9AC2</item>
+        <item name="colorSecondary">#1E4A78</item>
         <item name="colorError">#FF3B3B</item>
 
         <!-- Window background; replaces colorBackground -->
-        <item name="android:windowBackground">#F5F7FA</item>
+        <item name="android:windowBackground">#0A1B33</item>
 
         <!-- Surfaces (cards, dialogs) -->
-        <item name="colorSurface">#FFFFFF</item>
+        <item name="colorSurface">#112240</item>
 
         <!-- On-colors -->
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorOnSecondary">#1E4A78</item>
-        <item name="colorOnSurface">#222222</item>
-        <item name="colorOnError">#FFFFFF</item>
+        <item name="colorOnPrimary">#0A1B33</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorOnSurface">#E0E6F0</item>
+        <item name="colorOnError">#0A1B33</item>
     </style>
 
     <!-- Splash theme: no preview snapshot, solid bg, our first logo -->
@@ -35,4 +35,6 @@
         <!-- 5) fall back to your normal theme after that window-splash -->
         <item name="postSplashScreenTheme">@style/Theme.FlippingMedicalSuppliesAssistant</item>
     </style>
+
+
 </resources>

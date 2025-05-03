@@ -8,14 +8,21 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +33,11 @@ fun InvoiceStep2Screen(
     onNext: (InvoiceMeta) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
+    val locale = Locale.getDefault()
+    fun String.normalize() = split(' ')
+        .joinToString(" ") { word ->
+            word.lowercase(locale).replaceFirstChar { it.uppercase(locale) }
+        }
 
     // — load & parse our buyer list from strings.xml
     val rawBuyers = stringArrayResource(R.array.buyer_list).toList()
@@ -48,28 +60,39 @@ fun InvoiceStep2Screen(
             zip      = parts.getOrNull(5).orEmpty()
         )
     }
-
-    // spinner options = “Select…” + names + “Manual Entry”
     val buyerOptions = listOf("Select Existing Buyer") +
             buyers.map { it.name } +
             listOf("Manual Entry")
-
     var buyerExpanded by rememberSaveable { mutableStateOf(false) }
     var selectedBuyer by rememberSaveable { mutableStateOf(buyerOptions[0]) }
 
     // form fields
-    var clientName     by rememberSaveable { mutableStateOf(initial?.clientName     ?: "") }
+    var clientName     by rememberSaveable { mutableStateOf(initial?.clientName ?: "") }
     var clientAddress1 by rememberSaveable { mutableStateOf(initial?.clientAddress1 ?: "") }
     var clientAddress2 by rememberSaveable { mutableStateOf(initial?.clientAddress2.orEmpty()) }
-    var clientCity     by rememberSaveable { mutableStateOf(initial?.clientCity     ?: "") }
-    var clientState    by rememberSaveable { mutableStateOf(initial?.clientState    ?: "") }
-    var clientZip      by rememberSaveable { mutableStateOf(initial?.clientZip      ?: "") }
+    var clientCity     by rememberSaveable { mutableStateOf(initial?.clientCity ?: "") }
+    var clientState    by rememberSaveable { mutableStateOf(initial?.clientState ?: "") }
+    var clientZip      by rememberSaveable { mutableStateOf(initial?.clientZip ?: "") }
     var invoiceNum     by rememberSaveable { mutableStateOf(initial?.invoiceNumber.orEmpty()) }
 
     val payableTo = remember(sellerInfo) { sellerInfo.dba ?: sellerInfo.name }
     val statesList = stringArrayResource(id = R.array.states).toList()
     var stateDropdownExpanded by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+
+    // FocusRequester for invoice number
+    val invoiceNumRequester = remember { FocusRequester() }
+    var zipNextPressed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(zipNextPressed) {
+        if (zipNextPressed) {
+            snapshotFlow { zipNextPressed }
+                .filter { it }
+                .first()
+            invoiceNumRequester.requestFocus()
+            zipNextPressed = false
+        }
+    }
 
     Column(
         Modifier
@@ -80,7 +103,7 @@ fun InvoiceStep2Screen(
     ) {
         Text("Step 2: Invoice Details", style = MaterialTheme.typography.titleLarge)
 
-        // ── Buyer spinner ──
+        // Buyer spinner
         ExposedDropdownMenuBox(
             expanded = buyerExpanded,
             onExpandedChange = { buyerExpanded = it }
@@ -91,12 +114,10 @@ fun InvoiceStep2Screen(
                 readOnly = true,
                 singleLine = true,
                 label = { Text("Existing Buyer") },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(buyerExpanded)
-                },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(buyerExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = buyerExpanded,
@@ -110,7 +131,6 @@ fun InvoiceStep2Screen(
                             buyerExpanded = false
                             when {
                                 opt == "Manual Entry" || opt == buyerOptions[0] -> {
-                                    // clear for manual
                                     clientName = ""
                                     clientAddress1 = ""
                                     clientAddress2 = ""
@@ -119,7 +139,6 @@ fun InvoiceStep2Screen(
                                     clientZip = ""
                                 }
                                 else -> {
-                                    // populate from buyers list
                                     val info = buyers.first { it.name == opt }
                                     clientName     = info.name
                                     clientAddress1 = info.address1
@@ -136,44 +155,75 @@ fun InvoiceStep2Screen(
             }
         }
 
-        // ── Client fields ──
+        // Client Name
         OutlinedTextField(
             value = clientName,
-            onValueChange = { clientName = it },
+            onValueChange = { clientName = it.normalize() },
             label = { Text("Client Name") },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = clientAddress1,
-            onValueChange = { clientAddress1 = it },
-            label = { Text("Address Line 1") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = clientAddress2,
-            onValueChange = { clientAddress2 = it },
-            label = { Text("Address Line 2 (optional)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = clientCity,
-            onValueChange = { clientCity = it },
-            label = { Text("City") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                capitalization = KeyboardCapitalization.Words,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Address Line 1
+        OutlinedTextField(
+            value = clientAddress1,
+            onValueChange = { clientAddress1 = it.normalize() },
+            label = { Text("Address Line 1") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                capitalization = KeyboardCapitalization.Words,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Address Line 2
+        OutlinedTextField(
+            value = clientAddress2,
+            onValueChange = { clientAddress2 = it.normalize() },
+            label = { Text("Address Line 2 (optional)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                capitalization = KeyboardCapitalization.Words,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // City -> open state spinner
+        OutlinedTextField(
+            value = clientCity,
+            onValueChange = { clientCity = it.normalize() },
+            label = { Text("City") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                capitalization = KeyboardCapitalization.Words,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { stateDropdownExpanded = true }
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // State spinner
         ExposedDropdownMenuBox(
             expanded = stateDropdownExpanded,
             onExpandedChange = { stateDropdownExpanded = it }
@@ -184,12 +234,10 @@ fun InvoiceStep2Screen(
                 readOnly = true,
                 singleLine = true,
                 label = { Text("State") },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(stateDropdownExpanded)
-                },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(stateDropdownExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = stateDropdownExpanded,
@@ -208,16 +256,23 @@ fun InvoiceStep2Screen(
             }
         }
 
+        // Zip Code -> skip to invoice number
         OutlinedTextField(
             value = clientZip,
             onValueChange = { clientZip = it.filter(Char::isDigit) },
             label = { Text("Zip Code") },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { zipNextPressed = true }
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Payable To
         OutlinedTextField(
             value = payableTo,
             onValueChange = {},
@@ -227,14 +282,22 @@ fun InvoiceStep2Screen(
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Invoice # -> focusRequester
         OutlinedTextField(
             value = invoiceNum,
             onValueChange = { invoiceNum = it.filter(Char::isDigit) },
             label = { Text("Invoice # (optional)") },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-            modifier = Modifier.fillMaxWidth()
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus() }
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(invoiceNumRequester)
         )
 
         Spacer(Modifier.height(24.dp))
@@ -259,12 +322,13 @@ fun InvoiceStep2Screen(
                         )
                     )
                 },
-                enabled = listOf(clientName, clientAddress1, clientCity, clientState, clientZip)
-                    .all { it.isNotBlank() }
+                enabled = listOf(
+                    clientName, clientAddress1, clientCity,
+                    clientState, clientZip
+                ).all { it.isNotBlank() }
             ) {
                 Text("Next")
             }
         }
     }
 }
-

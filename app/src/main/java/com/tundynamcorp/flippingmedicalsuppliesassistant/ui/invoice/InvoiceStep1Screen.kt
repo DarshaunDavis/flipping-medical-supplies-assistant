@@ -15,12 +15,14 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
+import java.util.Locale
 
 /** Seller/company info for the invoice form */
 data class SellerInfo(
@@ -42,15 +44,13 @@ fun InvoiceStep1Screen(
     settingsViewModel: SettingsViewModel = viewModel(),
     authViewModel: AuthViewModel       = viewModel()
 ) {
-    // 1️⃣ DataStore copy (local fallback)
+    // DataStore / RTDB profile
     val localProfile by settingsViewModel.profileInfo.collectAsState()
-    // 2️⃣ RTDB-backed profile (if we’ve ever loaded it)
     val remoteProfile by authViewModel.profileInfo.collectAsState()
 
-    // 3️⃣ “Use profile” toggle
     var useProfile by rememberSaveable { mutableStateOf(false) }
 
-    // 4️⃣ Form state
+    // Form state
     var name     by rememberSaveable { mutableStateOf("") }
     var dba      by rememberSaveable { mutableStateOf("") }
     var address1 by rememberSaveable { mutableStateOf("") }
@@ -61,10 +61,9 @@ fun InvoiceStep1Screen(
     var phone    by rememberSaveable { mutableStateOf("") }
     var email    by rememberSaveable { mutableStateOf("") }
 
-    // 5️⃣ Populate / clear when toggling
+    // Populate / clear when toggling
     LaunchedEffect(useProfile) {
         if (useProfile) {
-            // prefer RTDB data if available
             val p = remoteProfile ?: localProfile
             name     = p.name
             dba      = p.dba.orEmpty()
@@ -82,10 +81,14 @@ fun InvoiceStep1Screen(
         }
     }
 
-    // 6️⃣ Focus manager
     val focusManager = LocalFocusManager.current
+    val locale = Locale.getDefault()
+    fun String.normalize() = split(' ')
+        .joinToString(" ") { word ->
+            word.lowercase(locale)
+                .replaceFirstChar { it.uppercase(locale) }
+        }
 
-    // 7️⃣ State dropdown + scroll
     val statesList = stringArrayResource(id = R.array.states).toList()
     var stateDropdownExpanded by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
@@ -113,11 +116,12 @@ fun InvoiceStep1Screen(
             // Name
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = { name = it.normalize() },
                 label = { Text("Name") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
+                    capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Next
                 ),
                 keyboardActions = KeyboardActions(
@@ -129,11 +133,12 @@ fun InvoiceStep1Screen(
             // DBA
             OutlinedTextField(
                 value = dba,
-                onValueChange = { dba = it },
+                onValueChange = { dba = it.normalize() },
                 label = { Text("DBA (optional)") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
+                    capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Next
                 ),
                 keyboardActions = KeyboardActions(
@@ -145,11 +150,12 @@ fun InvoiceStep1Screen(
             // Address Line 1
             OutlinedTextField(
                 value = address1,
-                onValueChange = { address1 = it },
+                onValueChange = { address1 = it.normalize() },
                 label = { Text("Address Line 1") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
+                    capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Next
                 ),
                 keyboardActions = KeyboardActions(
@@ -161,11 +167,12 @@ fun InvoiceStep1Screen(
             // Address Line 2
             OutlinedTextField(
                 value = address2,
-                onValueChange = { address2 = it },
+                onValueChange = { address2 = it.normalize() },
                 label = { Text("Address Line 2 (optional)") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
+                    capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Next
                 ),
                 keyboardActions = KeyboardActions(
@@ -174,18 +181,19 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // City
+            // City -> opens state spinner on Next
             OutlinedTextField(
                 value = city,
-                onValueChange = { city = it },
+                onValueChange = { city = it.normalize() },
                 label = { Text("City") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
+                    capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Next
                 ),
                 keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                    onNext = { stateDropdownExpanded = true }
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -197,7 +205,7 @@ fun InvoiceStep1Screen(
             ) {
                 TextField(
                     value = state.ifBlank { "Select State" },
-                    onValueChange = {},
+                    onValueChange = { },
                     readOnly = true,
                     singleLine = true,
                     label = { Text("State") },
@@ -206,10 +214,7 @@ fun InvoiceStep1Screen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(
-                            type = MenuAnchorType.PrimaryNotEditable,
-                            enabled = true
-                        )
+                        .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
                 )
                 ExposedDropdownMenu(
                     expanded = stateDropdownExpanded,
@@ -263,11 +268,12 @@ fun InvoiceStep1Screen(
             // Email
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = { email = it.normalize() },
                 label = { Text("Email (optional)") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
+                    capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
@@ -295,8 +301,7 @@ fun InvoiceStep1Screen(
                     )
                 },
                 modifier = Modifier.align(Alignment.End),
-                enabled = listOf(name, address1, city, state, zip, phone)
-                    .all { it.isNotBlank() }
+                enabled = listOf(name, address1, city, state, zip, phone).all { it.isNotBlank() }
             ) {
                 Text("Next")
             }

@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import java.util.Locale
 
 @Composable
 fun RegisterDialog(
@@ -43,11 +45,22 @@ fun RegisterDialog(
                 // ✏️ Name field
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = { input ->
+                        // Normalize each word: first letter uppercase, rest lowercase
+                        val locale = Locale.getDefault()
+                        name = input
+                            .split(' ')
+                            .joinToString(" ") { word ->
+                                word
+                                    .lowercase(locale)
+                                    .replaceFirstChar { it.uppercase(locale) }
+                            }
+                    },
                     label = { Text("Name") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Text,
+                        capitalization = KeyboardCapitalization.Words,  // 2) request word-cap keyboard
                         imeAction = ImeAction.Next
                     ),
                     keyboardActions = KeyboardActions(

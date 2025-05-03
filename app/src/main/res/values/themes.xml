@@ -8,8 +8,8 @@
         <item name="colorSecondary">#72B8E0</item>
         <item name="colorError">#FF3B3B</item>
 
-        <!-- Window background; replaces colorBackground -->
-        <item name="android:windowBackground">#F5F7FA</item>
+        <!-- Window background now matches your light-logo bg (#FEFEFE) -->
+        <item name="android:windowBackground">#FEFEFE</item>
 
         <!-- Surfaces (cards, dialogs) -->
         <item name="colorSurface">#FFFFFF</item>
@@ -21,18 +21,15 @@
         <item name="colorOnError">#FFFFFF</item>
     </style>
 
-    <!-- Splash theme: no preview snapshot, solid bg, our first logo -->
+    <!-- Splash theme -->
     <style name="Theme.FlippingSplash"
         parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- 1) kill the default snapshot of your launcher icon -->
+        <!-- remove default snapshot -->
         <item name="android:windowDisablePreview">true</item>
-        <!-- 2) background for the window while your layout/compose loads -->
-        <item name="android:windowBackground">@android:color/white</item>
-        <!-- 3) if you ever use installSplashScreen() APIs, this supplies the icon -->
+        <!-- match light-mode bg too -->
+        <item name="android:windowBackground">#FEFEFE</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/lislal_logo</item>
-        <!-- 4) same solid background during the Android12+ splash -->
-        <item name="windowSplashScreenBackground">@android:color/white</item>
-        <!-- 5) fall back to your normal theme after that window-splash -->
+        <item name="windowSplashScreenBackground">#FEFEFE</item>
         <item name="postSplashScreenTheme">@style/Theme.FlippingMedicalSuppliesAssistant</item>
     </style>
 </resources>

@@ -1,15 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Your app’s default dark theme -->
     <style name="Theme.FlippingMedicalSuppliesAssistant"
-        parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Brand colors (contrast-swapped as before) -->
         <item name="colorPrimary">#72B8E0</item>
         <item name="colorPrimaryVariant">#4A9AC2</item>
         <item name="colorSecondary">#1E4A78</item>
         <item name="colorError">#FF3B3B</item>
 
-        <!-- Window background; replaces colorBackground -->
-        <item name="android:windowBackground">#0A1B33</item>
+        <!-- Window background now matches your dark-logo bg (#072847) -->
+        <item name="android:windowBackground">#072847</item>
 
         <!-- Surfaces (cards, dialogs) -->
         <item name="colorSurface">#112240</item>
@@ -21,20 +21,13 @@
         <item name="colorOnError">#0A1B33</item>
     </style>
 
-    <!-- Splash theme: no preview snapshot, solid bg, our first logo -->
+    <!-- Dark splash (optional) -->
     <style name="Theme.FlippingSplash"
         parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- 1) kill the default snapshot of your launcher icon -->
         <item name="android:windowDisablePreview">true</item>
-        <!-- 2) background for the window while your layout/compose loads -->
-        <item name="android:windowBackground">@android:color/white</item>
-        <!-- 3) if you ever use installSplashScreen() APIs, this supplies the icon -->
+        <item name="android:windowBackground">#072847</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/lislal_logo</item>
-        <!-- 4) same solid background during the Android12+ splash -->
-        <item name="windowSplashScreenBackground">@android:color/white</item>
-        <!-- 5) fall back to your normal theme after that window-splash -->
+        <item name="windowSplashScreenBackground">#072847</item>
         <item name="postSplashScreenTheme">@style/Theme.FlippingMedicalSuppliesAssistant</item>
     </style>
-
-
 </resources>

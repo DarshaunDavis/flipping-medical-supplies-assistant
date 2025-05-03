@@ -1,39 +1,64 @@
+// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/theme/Theme.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.*
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
+// Brand colors from your logo
+private val PrimaryBlue    = Color(0xFF1E4A78)
+private val SecondaryBlue  = Color(0xFF72B8E0)
+private val AccentRed      = Color(0xFFFF3B3B)
+
+// Exact backgrounds sampled from your PNGs
+private val LightBg        = Color(0xFFFEFEFE)
+private val DarkBg         = Color(0xFF072847)
+
 private val LightColorScheme = lightColorScheme(
-    primary       = Color(0xFF1E4A78),
+    primary       = PrimaryBlue,
     onPrimary     = Color.White,
-    secondary     = Color(0xFF72B8E0),
-    onSecondary   = Color(0xFF1E4A78),
-    background    = Color(0xFFFEFEFE),   // logo light‐bg
+
+    secondary     = SecondaryBlue,
+    onSecondary   = PrimaryBlue,
+
+    tertiary      = AccentRed,
+    onTertiary    = DarkBg,
+
+    background    = LightBg,
     onBackground  = Color(0xFF222222),
-    surface       = Color(0xFFFFFFFF),
+
+    surface       = Color.White,
     onSurface     = Color(0xFF222222),
-    error         = Color(0xFFFF3B3B),
+
+    error         = AccentRed,
     onError       = Color.White
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary       = Color(0xFF72B8E0),
-    onPrimary     = Color(0xFF0A1B33),
-    secondary     = Color(0xFF1E4A78),
+    primary       = SecondaryBlue,
+    onPrimary     = DarkBg,
+
+    secondary     = PrimaryBlue,
     onSecondary   = Color.White,
-    background    = Color(0xFF072847),   // logo dark‐bg
+
+    tertiary      = AccentRed,
+    onTertiary    = Color.White,
+
+    background    = DarkBg,
     onBackground  = Color(0xFFE0E6F0),
+
     surface       = Color(0xFF112240),
     onSurface     = Color(0xFFE0E6F0),
-    error         = Color(0xFFFF3B3B),
-    onError       = Color(0xFF0A1B33)
+
+    error         = AccentRed,
+    onError       = DarkBg
 )
 
 @Composable
 fun FlippingMedicalSuppliesAssistantTheme(
-    // force your custom schemes rather than dynamic system colors
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
@@ -41,8 +66,8 @@ fun FlippingMedicalSuppliesAssistantTheme(
 
     MaterialTheme(
         colorScheme = colors,
-        typography = Typography,  // your existing typography
-        shapes = Shapes,          // your existing shapes
+        typography = Typography, // your existing typography definitions
+        shapes = Shapes,         // your existing shape definitions
         content = content
     )
 }

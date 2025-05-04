@@ -1,41 +1,29 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.scan
 
-import android.Manifest
 import android.app.DatePickerDialog
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.zxing.ResultPoint
 import com.journeyapps.barcodescanner.*
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeRepository
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
-import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.flow.first
+import androidx.compose.material3.MenuAnchorType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,19 +32,6 @@ fun ScanScreen() {
     val lifecycleOwner = LocalLifecycleOwner.current
     val homeVm: HomeViewModel = viewModel()
     val ph by homeVm.priceHistory.collectAsState()
-
-    // 1️⃣ Camera permission state
-    var hasCameraPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                    PackageManager.PERMISSION_GRANTED
-        )
-    }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasCameraPermission = granted
-    }
 
     // scanning state
     var isScanning by remember { mutableStateOf(false) }
@@ -77,11 +52,11 @@ fun ScanScreen() {
     // camera view ref
     var barcodeView: DecoratedBarcodeView? by remember { mutableStateOf(null) }
 
-    // 2️⃣ Pause/resume camera with lifecycle
+    // 1) Pause/resume camera with lifecycle
     DisposableEffect(lifecycleOwner) {
         val obs = object : DefaultLifecycleObserver {
             override fun onResume(owner: LifecycleOwner) {
-                if (isScanning && hasCameraPermission) barcodeView?.resume()
+                if (isScanning) barcodeView?.resume()
             }
             override fun onPause(owner: LifecycleOwner) {
                 barcodeView?.pause()
@@ -91,7 +66,7 @@ fun ScanScreen() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
 
-    // 3️⃣ Handle scan results
+    // 2) Handle scan results
     val callback = remember {
         object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult?) {
@@ -107,7 +82,7 @@ fun ScanScreen() {
         }
     }
 
-    // 4️⃣ Lookup product + kick off history load
+    // 3) Lookup product + kick off history load
     LaunchedEffect(scannedCode) {
         matchedProduct = null
         submitted = false
@@ -133,19 +108,7 @@ fun ScanScreen() {
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // If scanning but no permission, request it
-        if (isScanning && !hasCameraPermission) {
-            LaunchedEffect(Unit) {
-                permissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-            Text("Camera permission is required to scan.")
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                Text("Grant Camera Permission")
-            }
-        }
-        // If scanning and permission granted, show camera preview
-        else if (isScanning && hasCameraPermission) {
+        if (isScanning) {
             AndroidView(
                 factory = { ctx ->
                     DecoratedBarcodeView(ctx).apply {
@@ -157,9 +120,7 @@ fun ScanScreen() {
                 },
                 modifier = Modifier.fillMaxSize()
             )
-        }
-        // Otherwise show scan button and results form
-        else {
+        } else {
             Button(onClick = {
                 scannedCode = null
                 matchedProduct = null
@@ -171,13 +132,21 @@ fun ScanScreen() {
             Spacer(Modifier.height(24.dp))
 
             if (scannedCode != null && matchedProduct == null) {
-                Text("We don’t accept that product.", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "We don’t accept that product.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
 
             matchedProduct?.let { prod ->
-                Text(prod.description, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    prod.description,
+                    style = MaterialTheme.typography.titleLarge
+                )
+
                 Spacer(Modifier.height(16.dp))
 
+                // --- Only show form BEFORE submit! ---
                 if (!submitted) {
                     // Expiration Date Picker
                     selectedDate?.let {
@@ -242,17 +211,19 @@ fun ScanScreen() {
                     if (selectedDate != null && !selectedCondition.isNullOrBlank()) {
                         Button(onClick = {
                             // compute month diff
-                            val fmt = SimpleDateFormat("M/d/yyyy", Locale.US)
-                            val selDate = fmt.parse(selectedDate!!)
-                            val baseDate = fmt.parse(ph!!.lastUpdated)
+                            val inputFmt = SimpleDateFormat("M/d/yyyy", Locale.US)
+                            val selDate = inputFmt.parse(selectedDate!!)
+                            val baseDate = SimpleDateFormat("M/d/yyyy", Locale.US)
+                                .parse(ph!!.lastUpdated)
                             val selCal = Calendar.getInstance().apply { time = selDate!! }
                             val baseCal = Calendar.getInstance().apply { time = baseDate!! }
                             val yearDiff = selCal.get(Calendar.YEAR) - baseCal.get(Calendar.YEAR)
                             val monDiff = selCal.get(Calendar.MONTH) - baseCal.get(Calendar.MONTH)
                             val diff = yearDiff * 12 + monDiff
 
-                            if (diff < 2) reject = true
-                            else {
+                            if (diff < 2) {
+                                reject = true
+                            } else {
                                 val idx = if (diff > 11) 0 else 11 - diff
                                 resultPrice = ph!!.prices[idx]
                             }
@@ -265,10 +236,14 @@ fun ScanScreen() {
                     }
                 }
 
+                // --- After submit: show result or rejection ---
                 if (submitted) {
                     Spacer(Modifier.height(24.dp))
                     if (reject) {
-                        Text("We cannot accept that product.", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "We cannot accept that product.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     } else {
                         Text(
                             text = "$${resultPrice?.toInt()}",

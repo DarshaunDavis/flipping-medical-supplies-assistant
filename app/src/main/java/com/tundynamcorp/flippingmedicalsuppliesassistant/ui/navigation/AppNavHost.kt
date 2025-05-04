@@ -54,18 +54,22 @@ fun AppNavHost() {
     val firebaseUser by authVm.user.collectAsState()
     val dbProfile by authVm.profileInfo.collectAsState()
 
-    // Greeting logic
-    val rawName = dbProfile?.name.orEmpty().ifBlank { firebaseUser?.displayName.orEmpty() }
-    val greetingName = remember(rawName) { rawName }
+    // Derive rawName directly (no remember) so it updates instantly
+    val rawName = dbProfile?.name
+        .takeIf { !it.isNullOrBlank() }
+        ?: firebaseUser?.displayName
+            .orEmpty()
+    val showingGreeting = rawName.isNotBlank()
+
+    // Time of day for greeting
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greetingWord = "Good"
     val greetingRest = when (hour) {
-        in 5..11 -> "Morning"
+        in 5..11  -> "Morning"
         in 12..17 -> "Afternoon"
-        else -> "Evening"
+        else      -> "Evening"
     }
 
-    // Dialog state
     var showLogin by remember { mutableStateOf(false) }
     var showRegister by remember { mutableStateOf(false) }
 
@@ -79,28 +83,29 @@ fun AppNavHost() {
                 .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
         ) {
-            Row(
+            // Fixed-header: logo always centered, greeting on left if present, login/logout on right
+            Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(vertical = 16.dp)
             ) {
-                if (greetingName.isNotBlank()) {
-                    Column(Modifier.padding(start = 16.dp)) {
+                if (showingGreeting) {
+                    Column(
+                        Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 16.dp)
+                    ) {
                         Text(greetingWord, style = MaterialTheme.typography.bodyLarge)
-                        Text("$greetingRest,\n$greetingName!", style = MaterialTheme.typography.bodyLarge)
+                        Text("$greetingRest,\n$rawName!", style = MaterialTheme.typography.bodyLarge)
                     }
-                } else {
-                    Spacer(Modifier.width(16.dp))
                 }
-
-                ThemedAppLogo(modifier = Modifier.size(120.dp))
-
+                ThemedAppLogo(modifier = Modifier.align(Alignment.Center).size(120.dp))
                 Text(
                     text = if (firebaseUser == null) "Login" else "Logout",
-                    style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary),
+                    style = MaterialTheme.typography.bodyLarge
+                        .copy(color = MaterialTheme.colorScheme.primary),
                     modifier = Modifier
+                        .align(Alignment.CenterEnd)
                         .padding(end = 16.dp)
                         .clickable {
                             if (firebaseUser == null) showLogin = true
@@ -109,12 +114,13 @@ fun AppNavHost() {
                 )
             }
 
+            // Auth dialogs
             if (showLogin) {
                 LoginDialog(
-                    authViewModel = authVm,
-                    onDismiss = { showLogin = false },
+                    authViewModel   = authVm,
+                    onDismiss       = { showLogin = false },
                     onRegisterClick = {
-                        showLogin = false
+                        showLogin    = false
                         showRegister = true
                     },
                     onLoginSuccess = { showLogin = false }
@@ -122,16 +128,17 @@ fun AppNavHost() {
             }
             if (showRegister) {
                 RegisterDialog(
-                    authViewModel = authVm,
-                    onDismiss = { showRegister = false },
-                    onSignInClick = {
+                    authViewModel     = authVm,
+                    onDismiss         = { showRegister = false },
+                    onSignInClick     = {
                         showRegister = false
-                        showLogin = true
+                        showLogin    = true
                     },
                     onRegisterSuccess = { showRegister = false }
                 )
             }
 
+            // Main content
             Box(Modifier.weight(1f)) {
                 NavHost(navController, startDestination = "home", Modifier.fillMaxSize()) {
                     composable("home") {
@@ -155,23 +162,24 @@ fun AppNavHost() {
                             ?.takeIf { ph != null }
                             ?.let { prod ->
                                 PriceHistoryDialog(
-                                    title = prod.description,
+                                    title       = prod.description,
                                     lastUpdated = ph!!.lastUpdated,
-                                    prices = ph!!.prices,
-                                    onDismiss = {
+                                    prices      = ph!!.prices,
+                                    onDismiss   = {
                                         homeVm.clearPriceHistory()
                                         selectedProduct = null
                                     }
                                 )
                             }
                     }
-                    composable("scan") { ScanScreen() }
+                    composable("scan")    { ScanScreen() }
                     composable("invoice") { InvoiceScreen() }
-                    composable("admin") { AdminScreen() }
-                    composable("settings") { SettingsScreen() }
+                    composable("admin")   { AdminScreen() }
+                    composable("settings"){ SettingsScreen() }
                 }
             }
 
+            // Banner ad placeholder
             Box(
                 Modifier
                     .fillMaxWidth()

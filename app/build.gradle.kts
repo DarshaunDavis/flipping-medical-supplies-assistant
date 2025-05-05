@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.zxing.android.embedded)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.database)
+    implementation(libs.play.services.ads)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

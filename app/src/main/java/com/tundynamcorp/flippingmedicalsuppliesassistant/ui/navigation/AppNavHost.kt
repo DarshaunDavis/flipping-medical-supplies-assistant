@@ -20,6 +20,7 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.PriceHistory
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.admin.AdminScreen
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.ads.BannerAd
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.LoginDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.RegisterDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
@@ -180,14 +181,11 @@ fun AppNavHost() {
             }
 
             // Banner ad placeholder
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Banner Ad Placeholder")
-            }
+            BannerAd(
+                modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+            )
         }
     }
 }

@@ -176,8 +176,12 @@ fun AppNavHost() {
                     composable("invoice") {
                         RoleGate(
                             currentRole = role,
-                            allowed     = setOf(UserRole.User, UserRole.Subscriber, UserRole.Admin)
-                        ) {
+                            allowed     = setOf(
+                                UserRole.User,         // trialers
+                                UserRole.Subscriber,   // paid subs
+                                UserRole.Admin
+                                        )
+                                    ) {
                             InvoiceScreen()
                         }
                     }

@@ -219,8 +219,13 @@ class AuthViewModel : ViewModel() {
     @Suppress("unused") // called by billing integration
     fun onSubscriptionPurchased() {
         auth.currentUser?.uid?.let { uid ->
-            dbRef.child(uid).child("role")
+            dbRef.child(uid)
+                .child("role")
                 .setValue(UserRole.Subscriber.name)
+                .addOnSuccessListener {
+                    // immediately reflect in-app
+                    _role.value = UserRole.Subscriber
+                }
         }
     }
 

@@ -135,7 +135,13 @@ class AuthViewModel : ViewModel() {
                                         "trialStart" to ServerValue.TIMESTAMP
                                     )
                                 )
-                                .addOnSuccessListener { onResult(true, null) }
+                                .addOnSuccessListener {
+                                    // **Immediate local state update** so UI gating reacts instantly:
+                                    _role.value = UserRole.User
+                                    _trialStart.value = System.currentTimeMillis()
+
+                                    onResult(true, null)
+                                }
                                 .addOnFailureListener { ex -> onResult(false, ex.localizedMessage) }
                         }
                         .addOnFailureListener { ex -> onResult(false, ex.localizedMessage) }

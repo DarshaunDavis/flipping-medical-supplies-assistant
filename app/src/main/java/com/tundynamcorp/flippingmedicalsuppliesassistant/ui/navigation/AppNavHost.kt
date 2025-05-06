@@ -1,5 +1,9 @@
+// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/navigation/AppNavHost.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.navigation
 
+import android.app.Activity
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -9,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -44,24 +49,49 @@ private fun ThemedAppLogo(modifier: Modifier = Modifier) {
 
 @Composable
 fun AppNavHost() {
+    val context = LocalContext.current
+    val activity = context as? Activity
+
     val navController = rememberNavController()
 
-    // Auth + role + trial
-    val authVm: AuthViewModel = viewModel()
-    val firebaseUser   by authVm.user.collectAsState()
-    val dbProfile      by authVm.profileInfo.collectAsState()
-    val role           by authVm.role.collectAsState()
-    val trialStart     by authVm.trialStart.collectAsState()
-    val isTrialActive  by authVm.isTrialActive.collectAsState()
+    // back-press tracking for “press twice to exit”
+    var lastBackPressTime by remember { mutableLongStateOf(0L) }
 
-    // Home VM + state
-    val homeVm         : HomeViewModel = viewModel()
-    val query          by homeVm.query.collectAsState()
-    val products       by homeVm.filteredProducts.collectAsState()
-    val ph             by homeVm.priceHistory.collectAsState()
+    // intercept every back-press…
+    BackHandler {
+        if (navController.previousBackStackEntry != null) {
+            // …first, pop your own nav stack if you can
+            navController.popBackStack()
+        } else {
+            // …otherwise, at root: require double-tap to quit
+            val now = System.currentTimeMillis()
+            if (now - lastBackPressTime < 2_000) {
+                activity?.finish()
+            } else {
+                lastBackPressTime = now
+                Toast
+                    .makeText(context, "Press back again to exit", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+    }
+
+    // Authentication + role + trial flows
+    val authVm: AuthViewModel = viewModel()
+    val firebaseUser by authVm.user.collectAsState()
+    val dbProfile   by authVm.profileInfo.collectAsState()
+    val role        by authVm.role.collectAsState()
+    val trialStart  by authVm.trialStart.collectAsState()
+    val isTrialActive by authVm.isTrialActive.collectAsState()
+
+    // Home list + state
+    val homeVm: HomeViewModel = viewModel()
+    val query    by homeVm.query.collectAsState()
+    val products by homeVm.filteredProducts.collectAsState()
+    val ph       by homeVm.priceHistory.collectAsState()
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
-    // Greeting
+    // for header greeting
     val rawName = dbProfile?.name.takeIf { !it.isNullOrBlank() }
         ?: firebaseUser?.displayName.orEmpty()
     val showingGreeting = rawName.isNotBlank()
@@ -117,9 +147,9 @@ fun AppNavHost() {
                 )
             }
 
-            // ── Trial banner ──
+            // ── Trial reminder ──
             TrialReminderBanner(trialStart = trialStart) {
-                // navigate to subscription screen
+                /* navigate to subscription */
             }
 
             // ── Auth dialogs ──
@@ -140,7 +170,7 @@ fun AppNavHost() {
                 )
             }
 
-            // ── Main content ──
+            // ── Main nav host ──
             Box(Modifier.weight(1f)) {
                 NavHost(navController, startDestination = "home", Modifier.fillMaxSize()) {
                     composable("home") {
@@ -167,6 +197,7 @@ fun AppNavHost() {
                                 )
                             }
                     }
+
                     composable("scan") {
                         if ((role == UserRole.User && isTrialActive)
                             || role == UserRole.Subscriber
@@ -175,11 +206,12 @@ fun AppNavHost() {
                             ScanScreen()
                         } else {
                             UpgradePromptDialog(
-                                onSubscribe = { /* navigate to subscription */ },
+                                onSubscribe = { /* ... */ },
                                 onDismiss   = { navController.navigate("home") }
                             )
                         }
                     }
+
                     composable("invoice") {
                         if ((role == UserRole.User && isTrialActive)
                             || role == UserRole.Subscriber
@@ -188,18 +220,20 @@ fun AppNavHost() {
                             InvoiceScreen()
                         } else {
                             UpgradePromptDialog(
-                                onSubscribe = { /* navigate to subscription */ },
+                                onSubscribe = { /* ... */ },
                                 onDismiss   = { navController.navigate("home") }
                             )
                         }
                     }
+
                     composable("admin") {
                         AdminScreen(
-                            currentRole   = role,
-                            isTrialActive = isTrialActive,
-                            onUpgradeClick = { /* show upgrade dialog */ }
+                            currentRole    = role,
+                            isTrialActive  = isTrialActive,
+                            onUpgradeClick = { /* ... */ }
                         )
                     }
+
                     composable("settings") {
                         SettingsScreen()
                     }
@@ -207,11 +241,7 @@ fun AppNavHost() {
             }
 
             // ── Banner Ad ──
-            BannerAd(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-            )
+            BannerAd(modifier = Modifier.fillMaxWidth().height(50.dp))
         }
     }
 }

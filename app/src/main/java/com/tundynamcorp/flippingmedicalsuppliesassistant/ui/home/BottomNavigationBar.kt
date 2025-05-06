@@ -20,8 +20,14 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.data.UserRole
 @Composable
 fun BottomNavigationBar(
     navController: NavController,
-    currentRole: UserRole
+    currentRole: UserRole,
+    isTrialActive: Boolean
 ) {
+    val effectiveOrdinal = when {
+        currentRole == UserRole.User && isTrialActive -> UserRole.Subscriber.ordinal
+        else                                           -> currentRole.ordinal
+    }
+
     // route, icon, minimum role required to enable
     val items = listOf(
         Triple("home",    Icons.Filled.Home,                   UserRole.Guest),
@@ -34,7 +40,7 @@ fun BottomNavigationBar(
     NavigationBar {
         items.forEach { (route, icon, minRole) ->
             // compare by ordinal since enums are final Comparable
-            val enabled = currentRole.ordinal >= minRole.ordinal
+            val enabled = effectiveOrdinal >= minRole.ordinal
             NavigationBarItem(
                 icon      = { Icon(icon, contentDescription = route) },
                 selected  = false, // wire up selection logic as needed

@@ -22,6 +22,7 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.ads.BannerAd
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.LoginDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.RegisterDialog
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.common.UpgradePromptDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components.TrialReminderBanner
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigationBar
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
@@ -51,6 +52,7 @@ fun AppNavHost() {
     val dbProfile   by authVm.profileInfo.collectAsState()
     val role        by authVm.role.collectAsState()
     val trialStart  by authVm.trialStart.collectAsState()
+    val isTrialActive by authVm.isTrialActive.collectAsState()
 
     // Home VM + state
     val homeVm: HomeViewModel = viewModel()
@@ -76,7 +78,7 @@ fun AppNavHost() {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar      = { BottomNavigationBar(navController, role) }
+        bottomBar      = { BottomNavigationBar(navController, role, isTrialActive) }
     ) { innerPadding ->
         Column(
             Modifier
@@ -166,28 +168,33 @@ fun AppNavHost() {
                             }
                     }
                     composable("scan") {
-                        RoleGate(
-                            currentRole = role,
-                            allowed     = setOf(UserRole.Subscriber, UserRole.Admin)
-                        ) {
-                            ScanScreen()
-                        }
+                        if ((role == UserRole.User && isTrialActive)
+                                || role == UserRole.Subscriber
+                                || role == UserRole.Admin) {
+                                ScanScreen()
+                                } else {
+                                UpgradePromptDialog(
+                                    onSubscribe = { /* navigate to subscription */ },
+                                    onDismiss   = { /* back to home */ }
+                                            )
+                                }
                     }
                     composable("invoice") {
-                        RoleGate(
-                            currentRole = role,
-                            allowed     = setOf(
-                                UserRole.User,         // trialers
-                                UserRole.Subscriber,   // paid subs
-                                UserRole.Admin
-                                        )
-                                    ) {
-                            InvoiceScreen()
-                        }
+                        if ((role == UserRole.User && isTrialActive)
+                                || role == UserRole.Subscriber
+                                || role == UserRole.Admin) {
+                                InvoiceScreen()
+                            } else {
+                                UpgradePromptDialog(
+                                    onSubscribe = { /* navigate to subscription */ },
+                                    onDismiss   = { /* back to home */ }
+                                )
+                            }
                     }
                     composable("admin") {
                         AdminScreen(
                             currentRole    = role,
+                            isTrialActive  = isTrialActive,
                             onUpgradeClick = { /* show your upgrade dialog */ }
                         )
                     }

@@ -14,6 +14,7 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.data.UserRole
 @Composable
 fun AdminScreen(
     currentRole: UserRole,
+    isTrialActive: Boolean,             // ← new parameter
     onUpgradeClick: () -> Unit,
     viewModel: AdminViewModel = viewModel()
 ) {
@@ -21,27 +22,30 @@ fun AdminScreen(
     val tabs = listOf("Profit Margin", "Prices", "Products")
     val minRequiredRole = listOf(
         UserRole.Guest,      // Profit Margin always enabled
-        UserRole.Subscriber, // Prices only for subscribers & admins
-        UserRole.User        // Products for users+trialers, subscribers, admins
+        UserRole.Subscriber, // Prices only for subs/admins (or trialers)
+        UserRole.User        // Products for users+trialers, subs, admins
     )
+
+    // Treat trialing User as Subscriber
+    val effectiveOrdinal = when {
+        currentRole == UserRole.User && isTrialActive -> UserRole.Subscriber.ordinal
+        else                                           -> currentRole.ordinal
+    }
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Column(Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTab) {
             tabs.forEachIndexed { index, title ->
-                val enabled = currentRole.ordinal >= minRequiredRole[index].ordinal
+                val enabled = effectiveOrdinal >= minRequiredRole[index].ordinal
                 Tab(
                     selected = (index == selectedTab),
-                    onClick = {
-                        if (enabled) {
-                            selectedTab = index
-                        } else {
-                            onUpgradeClick()
-                        }
+                    onClick  = {
+                        if (enabled) selectedTab = index
+                        else          onUpgradeClick()
                     },
                     enabled = enabled,
-                    text = { Text(title) }
+                    text    = { Text(title) }
                 )
             }
         }

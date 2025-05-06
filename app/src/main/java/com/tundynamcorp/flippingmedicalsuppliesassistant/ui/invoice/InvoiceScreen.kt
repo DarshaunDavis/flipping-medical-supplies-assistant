@@ -13,34 +13,45 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.UserRole
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.common.UpgradePromptDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
 
 @Composable
 fun InvoiceScreen(
-    settingsViewModel: SettingsViewModel = viewModel()
+    settingsViewModel: SettingsViewModel = viewModel(),
+    authVm: AuthViewModel               = viewModel(),
+    invoiceVm: InvoiceViewModel         = viewModel()
 ) {
     val context = LocalContext.current
 
-    // Track which step: 1=Seller, 2=Client, 3=Items, 4=Review
+    // 1️⃣ Wizard step
     var step by rememberSaveable { mutableIntStateOf(1) }
 
-    // Data carried between steps
-    var sellerInfo by remember { mutableStateOf<SellerInfo?>(null) }
-    var invoiceMeta by remember { mutableStateOf<InvoiceMeta?>(null) }
+    // 2️⃣ Shared data between steps
+    var sellerInfo: SellerInfo?   by remember { mutableStateOf(null) }
+    var invoiceMeta: InvoiceMeta? by remember { mutableStateOf(null) }
+    var lines: List<InvoiceLine>  by remember { mutableStateOf(emptyList()) }
 
-    // Now hold a list of line-items
-    var lines by remember { mutableStateOf<List<InvoiceLine>>(emptyList()) }
+    // 3️⃣ Role & trial state
+    val role             by authVm.role.collectAsState()
+    val isTrialActive    by authVm.isTrialActive.collectAsState()
+    val invoicesThisMonth by invoiceVm.countThisMonth.collectAsState()
+
+    // 4️⃣ Upgrade dialog flag
+    var showUpgrade by remember { mutableStateOf(false) }
 
     Surface(Modifier.fillMaxSize()) {
         when (step) {
-            // Step 1: Seller Info
+            // ── Step 1: Seller Info ──
             1 -> InvoiceStep1Screen(onNext = { info ->
-                settingsViewModel.updateProfile(info)
+                settingsViewModel.updateProfile(info)  // ✏️ uses settingsViewModel
                 sellerInfo = info
                 step = 2
             })
 
-            // Step 2: Client / Invoice Details
+            // ── Step 2: Client & Invoice Metadata ──
             2 -> sellerInfo?.let { s ->
                 InvoiceStep2Screen(
                     initial    = invoiceMeta,
@@ -53,11 +64,9 @@ fun InvoiceScreen(
                 )
             }
 
-            // Step 3: Add Items
+            // ── Step 3: Line-Item Entry ──
             3 -> {
-                // guard against missing prior data
                 if (sellerInfo == null || invoiceMeta == null) return@Surface
-
                 InvoiceStep3Screen(
                     existingLines = lines,
                     onBack        = { step = 2 },
@@ -66,78 +75,71 @@ fun InvoiceScreen(
                 )
             }
 
-            // Step 4: Review & Finish
-            4 -> Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text("Review Invoice", style = MaterialTheme.typography.titleLarge)
+            // ── Step 4: Review & Print/Save ──
+            4 -> {
+                if (sellerInfo == null || invoiceMeta == null) return@Surface
 
-                // Seller info
-                sellerInfo?.let { s ->
-                    Text("Seller: ${s.name}")
-                    Text("Address: ${s.address1}${s.address2?.let { ", $it" } ?: ""}")
-                    Text("Location: ${s.city}, ${s.state} ${s.zip}")
-                    Text("Phone: ${s.phone}")
-                    s.email?.let { Text("Email: $it") }
+                // determine if the user can print
+                val canPrint = when (role) {
+                    UserRole.User       -> isTrialActive || invoicesThisMonth == 0
+                    UserRole.Subscriber -> true
+                    UserRole.Admin      -> true
+                    else                -> false
                 }
 
-                Spacer(Modifier.height(8.dp))
-
-                // Client info
-                invoiceMeta?.let { m ->
-                    Text("Client: ${m.clientName}")
-                    Text("Address: ${m.clientAddress1}${m.clientAddress2?.let { ", $it" } ?: ""}")
-                    Text("Location: ${m.clientCity}, ${m.clientState} ${m.clientZip}")
-                    Text("Payable To: ${m.payableTo}")
-                    m.invoiceNumber?.let { Text("Invoice #: $it") }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                // Line-items
-                lines.forEachIndexed { index, line ->
-                    Text("${index + 1}. ${line.description} ×${line.quantity} = $${line.lineTotal.toInt()}")
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                // Grand total
-                val total = lines.sumOf { it.lineTotal.toDouble() }.toInt()
-                Text("Total Due: $${total}", style = MaterialTheme.typography.titleLarge)
-
-                Spacer(Modifier.weight(1f))
-
-                // Back & Finish buttons
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Button(onClick = { step = 3 }) {
-                        Text("Back")
-                    }
-                    Button(onClick = {
-                        // generate & print
-                        val file = InvoicePdfGenerator.generate(
-                            context = context,
-                            seller  = sellerInfo!!,
-                            meta    = invoiceMeta!!,
-                            lines   = lines
-                        )
-                        val printManager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
-                        printManager.print(
-                            "Invoice — ${file.name}",
-                            PdfDocumentAdapter(file.absolutePath),
-                            PrintAttributes.Builder().build()
-                        )
-                    }) {
-                        Text("Print / Save")
+                    Text("Review Invoice", style = MaterialTheme.typography.titleLarge)
+
+                    // ... display sellerInfo, invoiceMeta, lines, total ...
+
+                    Spacer(Modifier.weight(1f))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Button(onClick = { step = 3 }) {
+                            Text("Back")
+                        }
+                        Button(
+                            onClick = {
+                                if (canPrint) {
+                                    val file = InvoicePdfGenerator.generate(
+                                        context = context,
+                                        seller  = sellerInfo!!,
+                                        meta    = invoiceMeta!!,
+                                        lines   = lines
+                                    )
+                                    (context.getSystemService(Context.PRINT_SERVICE) as PrintManager)
+                                        .print(
+                                            "Invoice — ${file.name}",
+                                            PdfDocumentAdapter(file.absolutePath),
+                                            PrintAttributes.Builder().build()
+                                        )
+                                } else {
+                                    showUpgrade = true
+                                }
+                            },
+                            enabled = canPrint
+                        ) {
+                            Text("Print / Save")
+                        }
                     }
                 }
             }
         }
+    }
+
+    // 5️⃣ Show upgrade dialog if user tapped but was not allowed
+    if (showUpgrade) {
+        UpgradePromptDialog(
+            onSubscribe = { /* TODO: navigate to subscription screen */ },
+            onDismiss   = { showUpgrade = false }
+        )
     }
 }

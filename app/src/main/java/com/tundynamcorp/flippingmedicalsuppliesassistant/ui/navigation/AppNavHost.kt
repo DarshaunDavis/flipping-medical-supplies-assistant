@@ -12,18 +12,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.*
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
-import com.tundynamcorp.flippingmedicalsuppliesassistant.data.PriceHistory
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.UserRole
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.admin.AdminScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.ads.BannerAd
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.LoginDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.RegisterDialog
-import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components.TrialReminderBanner
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigationBar
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDialog
@@ -34,14 +33,10 @@ import java.util.Calendar
 
 @Composable
 private fun ThemedAppLogo(modifier: Modifier = Modifier) {
-    val logoRes = if (isSystemInDarkTheme()) {
-        R.drawable.fmsadarklogo
-    } else {
-        R.drawable.fmsalightlogo
-    }
+    val logoRes = if (isSystemInDarkTheme()) R.drawable.fmsadarklogo else R.drawable.fmsalightlogo
     Image(
         painter = painterResource(logoRes),
-        contentDescription = "App logo",
+        contentDescription = null,
         modifier = modifier
     )
 }
@@ -50,19 +45,24 @@ private fun ThemedAppLogo(modifier: Modifier = Modifier) {
 fun AppNavHost() {
     val navController = rememberNavController()
 
-    // Authentication
+    // Auth + role + trial
     val authVm: AuthViewModel = viewModel()
     val firebaseUser by authVm.user.collectAsState()
-    val dbProfile by authVm.profileInfo.collectAsState()
+    val dbProfile   by authVm.profileInfo.collectAsState()
+    val role        by authVm.role.collectAsState()
+    val trialStart  by authVm.trialStart.collectAsState()
 
-    // Derive rawName directly (no remember) so it updates instantly
-    val rawName = dbProfile?.name
-        .takeIf { !it.isNullOrBlank() }
-        ?: firebaseUser?.displayName
-            .orEmpty()
+    // Home VM + state
+    val homeVm: HomeViewModel = viewModel()
+    val query    by homeVm.query.collectAsState()
+    val products by homeVm.filteredProducts.collectAsState()
+    val ph       by homeVm.priceHistory.collectAsState()
+    var selectedProduct by remember { mutableStateOf<Product?>(null) }
+
+    // Greeting
+    val rawName = dbProfile?.name.takeIf { !it.isNullOrBlank() }
+        ?: firebaseUser?.displayName.orEmpty()
     val showingGreeting = rawName.isNotBlank()
-
-    // Time of day for greeting
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greetingWord = "Good"
     val greetingRest = when (hour) {
@@ -71,12 +71,12 @@ fun AppNavHost() {
         else      -> "Evening"
     }
 
-    var showLogin by remember { mutableStateOf(false) }
+    var showLogin    by remember { mutableStateOf(false) }
     var showRegister by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = { BottomNavigationBar(navController) }
+        bottomBar      = { BottomNavigationBar(navController, role) }
     ) { innerPadding ->
         Column(
             Modifier
@@ -84,7 +84,7 @@ fun AppNavHost() {
                 .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
         ) {
-            // Fixed-header: logo always centered, greeting on left if present, login/logout on right
+            // ── Header ──
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -100,7 +100,7 @@ fun AppNavHost() {
                         Text("$greetingRest,\n$rawName!", style = MaterialTheme.typography.bodyLarge)
                     }
                 }
-                ThemedAppLogo(modifier = Modifier.align(Alignment.Center).size(120.dp))
+                ThemedAppLogo(Modifier.align(Alignment.Center).size(120.dp))
                 Text(
                     text = if (firebaseUser == null) "Login" else "Logout",
                     style = MaterialTheme.typography.bodyLarge
@@ -115,15 +115,17 @@ fun AppNavHost() {
                 )
             }
 
-            // Auth dialogs
+            // ── Trial banner ──
+            TrialReminderBanner(trialStart = trialStart) {
+                // navigate to subscription screen
+            }
+
+            // ── Auth dialogs ──
             if (showLogin) {
                 LoginDialog(
                     authViewModel   = authVm,
                     onDismiss       = { showLogin = false },
-                    onRegisterClick = {
-                        showLogin    = false
-                        showRegister = true
-                    },
+                    onRegisterClick = { showLogin = false; showRegister = true },
                     onLoginSuccess = { showLogin = false }
                 )
             }
@@ -131,34 +133,24 @@ fun AppNavHost() {
                 RegisterDialog(
                     authViewModel     = authVm,
                     onDismiss         = { showRegister = false },
-                    onSignInClick     = {
-                        showRegister = false
-                        showLogin    = true
-                    },
+                    onSignInClick     = { showRegister = false; showLogin = true },
                     onRegisterSuccess = { showRegister = false }
                 )
             }
 
-            // Main content
+            // ── Main content ──
             Box(Modifier.weight(1f)) {
                 NavHost(navController, startDestination = "home", Modifier.fillMaxSize()) {
                     composable("home") {
-                        val homeVm: HomeViewModel = viewModel()
-                        val query by homeVm.query.collectAsState()
-                        val products by homeVm.filteredProducts.collectAsState()
-                        val ph: PriceHistory? by homeVm.priceHistory.collectAsState()
-                        var selectedProduct by remember { mutableStateOf<Product?>(null) }
-
                         HomeScreen(
-                            products = products,
-                            query = query,
+                            products      = products,
+                            query         = query,
                             onQueryChange = { homeVm.onQueryChanged(it) },
                             onProductClick = { prod ->
                                 homeVm.loadPriceHistory(prod.category, prod.barcode)
                                 selectedProduct = prod
                             }
                         )
-
                         selectedProduct
                             ?.takeIf { ph != null }
                             ?.let { prod ->
@@ -173,19 +165,36 @@ fun AppNavHost() {
                                 )
                             }
                     }
-                    composable("scan")    { ScanScreen() }
-                    composable("invoice") { InvoiceScreen() }
-                    composable("admin")   { AdminScreen() }
-                    composable("settings"){ SettingsScreen() }
+                    composable("scan") {
+                        RoleGate(
+                            currentRole = role,
+                            allowed     = setOf(UserRole.Subscriber, UserRole.Admin)
+                        ) {
+                            ScanScreen()
+                        }
+                    }
+                    composable("invoice") {
+                        RoleGate(
+                            currentRole = role,
+                            allowed     = setOf(UserRole.User, UserRole.Subscriber, UserRole.Admin)
+                        ) {
+                            InvoiceScreen()
+                        }
+                    }
+                    composable("admin") {
+                        AdminScreen(
+                            currentRole    = role,
+                            onUpgradeClick = { /* show your upgrade dialog */ }
+                        )
+                    }
+                    composable("settings") {
+                        SettingsScreen()
+                    }
                 }
             }
 
-            // Banner ad placeholder
-            BannerAd(
-                modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-            )
+            // ── Banner Ad ──
+            BannerAd(modifier = Modifier.fillMaxWidth().height(50.dp))
         }
     }
 }

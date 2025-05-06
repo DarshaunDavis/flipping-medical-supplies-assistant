@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import android.widget.Toast
+import androidx.compose.ui.Alignment
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components.TrialCountdown
 
 @Composable
 fun AccountTab(
@@ -19,6 +21,7 @@ fun AccountTab(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val trialStart by authViewModel.trialStart.collectAsState()
 
     var currentPwd by remember { mutableStateOf("") }
     var newPwd     by remember { mutableStateOf("") }
@@ -37,9 +40,12 @@ fun AccountTab(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment   = Alignment.CenterHorizontally
     ) {
         Text("Account Settings", style = MaterialTheme.typography.titleLarge)
+
+        TrialCountdown(trialStart = trialStart, modifier = Modifier.padding(bottom = 16.dp))
 
         OutlinedTextField(
             value = currentPwd,

@@ -48,17 +48,17 @@ fun AppNavHost() {
 
     // Auth + role + trial
     val authVm: AuthViewModel = viewModel()
-    val firebaseUser by authVm.user.collectAsState()
-    val dbProfile   by authVm.profileInfo.collectAsState()
-    val role        by authVm.role.collectAsState()
-    val trialStart  by authVm.trialStart.collectAsState()
-    val isTrialActive by authVm.isTrialActive.collectAsState()
+    val firebaseUser   by authVm.user.collectAsState()
+    val dbProfile      by authVm.profileInfo.collectAsState()
+    val role           by authVm.role.collectAsState()
+    val trialStart     by authVm.trialStart.collectAsState()
+    val isTrialActive  by authVm.isTrialActive.collectAsState()
 
     // Home VM + state
-    val homeVm: HomeViewModel = viewModel()
-    val query    by homeVm.query.collectAsState()
-    val products by homeVm.filteredProducts.collectAsState()
-    val ph       by homeVm.priceHistory.collectAsState()
+    val homeVm         : HomeViewModel = viewModel()
+    val query          by homeVm.query.collectAsState()
+    val products       by homeVm.filteredProducts.collectAsState()
+    val ph             by homeVm.priceHistory.collectAsState()
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
     // Greeting
@@ -169,33 +169,35 @@ fun AppNavHost() {
                     }
                     composable("scan") {
                         if ((role == UserRole.User && isTrialActive)
-                                || role == UserRole.Subscriber
-                                || role == UserRole.Admin) {
-                                ScanScreen()
-                                } else {
-                                UpgradePromptDialog(
-                                    onSubscribe = { /* navigate to subscription */ },
-                                    onDismiss   = { /* back to home */ }
-                                            )
-                                }
+                            || role == UserRole.Subscriber
+                            || role == UserRole.Admin
+                        ) {
+                            ScanScreen()
+                        } else {
+                            UpgradePromptDialog(
+                                onSubscribe = { /* navigate to subscription */ },
+                                onDismiss   = { navController.navigate("home") }
+                            )
+                        }
                     }
                     composable("invoice") {
                         if ((role == UserRole.User && isTrialActive)
-                                || role == UserRole.Subscriber
-                                || role == UserRole.Admin) {
-                                InvoiceScreen()
-                            } else {
-                                UpgradePromptDialog(
-                                    onSubscribe = { /* navigate to subscription */ },
-                                    onDismiss   = { /* back to home */ }
-                                )
-                            }
+                            || role == UserRole.Subscriber
+                            || role == UserRole.Admin
+                        ) {
+                            InvoiceScreen()
+                        } else {
+                            UpgradePromptDialog(
+                                onSubscribe = { /* navigate to subscription */ },
+                                onDismiss   = { navController.navigate("home") }
+                            )
+                        }
                     }
                     composable("admin") {
                         AdminScreen(
-                            currentRole    = role,
-                            isTrialActive  = isTrialActive,
-                            onUpgradeClick = { /* show your upgrade dialog */ }
+                            currentRole   = role,
+                            isTrialActive = isTrialActive,
+                            onUpgradeClick = { /* show upgrade dialog */ }
                         )
                     }
                     composable("settings") {
@@ -205,7 +207,11 @@ fun AppNavHost() {
             }
 
             // ── Banner Ad ──
-            BannerAd(modifier = Modifier.fillMaxWidth().height(50.dp))
+            BannerAd(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+            )
         }
     }
 }

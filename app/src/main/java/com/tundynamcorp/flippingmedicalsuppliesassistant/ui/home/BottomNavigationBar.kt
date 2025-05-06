@@ -1,4 +1,3 @@
-// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/home/BottomNavigationBar.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home
 
 import androidx.compose.material.icons.Icons
@@ -12,11 +11,9 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.UserRole
 
-/**
- * A bottom navigation bar with role-based enabled/disabled items.
- */
 @Composable
 fun BottomNavigationBar(
     navController: NavController,
@@ -28,7 +25,6 @@ fun BottomNavigationBar(
         else                                           -> currentRole.ordinal
     }
 
-    // route, icon, minimum role required to enable
     val items = listOf(
         Triple("home",    Icons.Filled.Home,                   UserRole.Guest),
         Triple("scan",    Icons.Filled.QrCodeScanner,          UserRole.Subscriber),
@@ -39,15 +35,22 @@ fun BottomNavigationBar(
 
     NavigationBar {
         items.forEach { (route, icon, minRole) ->
-            // compare by ordinal since enums are final Comparable
             val enabled = effectiveOrdinal >= minRole.ordinal
             NavigationBarItem(
                 icon      = { Icon(icon, contentDescription = route) },
-                selected  = false, // wire up selection logic as needed
+                selected  = false,
                 enabled   = enabled,
                 onClick   = {
-                    if (enabled) navController.navigate(route)
-                    else {
+                    if (enabled) {
+                        navController.navigate(route) {
+                            // Pop everything up to the graph’s startDestination
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                inclusive = true
+                            }
+                            // Don’t push another copy if already on that tab
+                            launchSingleTop = true
+                        }
+                    } else {
                         // TODO: show upgrade prompt
                     }
                 }

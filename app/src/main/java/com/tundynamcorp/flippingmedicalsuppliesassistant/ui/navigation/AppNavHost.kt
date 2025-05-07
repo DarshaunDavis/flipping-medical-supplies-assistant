@@ -1,4 +1,3 @@
-// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/navigation/AppNavHost.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.navigation
 
 import android.app.Activity
@@ -27,7 +26,6 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.ads.BannerAd
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.LoginDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.RegisterDialog
-import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.common.UpgradePromptDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components.TrialReminderBanner
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigationBar
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
@@ -49,39 +47,31 @@ private fun ThemedAppLogo(modifier: Modifier = Modifier) {
 
 @Composable
 fun AppNavHost() {
-    val context = LocalContext.current
+    val context  = LocalContext.current
     val activity = context as? Activity
-
     val navController = rememberNavController()
 
-    // back-press tracking for “press twice to exit”
+    // double-back-to-exit
     var lastBackPressTime by remember { mutableLongStateOf(0L) }
-
-    // intercept every back-press…
     BackHandler {
         if (navController.previousBackStackEntry != null) {
-            // …first, pop your own nav stack if you can
             navController.popBackStack()
         } else {
-            // …otherwise, at root: require double-tap to quit
             val now = System.currentTimeMillis()
-            if (now - lastBackPressTime < 2_000) {
-                activity?.finish()
-            } else {
+            if (now - lastBackPressTime < 2_000) activity?.finish()
+            else {
                 lastBackPressTime = now
-                Toast
-                    .makeText(context, "Press back again to exit", Toast.LENGTH_SHORT)
-                    .show()
+                Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // Authentication + role + trial flows
-    val authVm: AuthViewModel = viewModel()
+    // Auth + role + trial
+    val authVm: AuthViewModel      = viewModel()
     val firebaseUser by authVm.user.collectAsState()
-    val dbProfile   by authVm.profileInfo.collectAsState()
-    val role        by authVm.role.collectAsState()
-    val trialStart  by authVm.trialStart.collectAsState()
+    val dbProfile    by authVm.profileInfo.collectAsState()
+    val role         by authVm.role.collectAsState()
+    val trialStart   by authVm.trialStart.collectAsState()
     val isTrialActive by authVm.isTrialActive.collectAsState()
 
     // Home list + state
@@ -91,8 +81,8 @@ fun AppNavHost() {
     val ph       by homeVm.priceHistory.collectAsState()
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
-    // for header greeting
-    val rawName = dbProfile?.name.takeIf { !it.isNullOrBlank() }
+    // header greeting data
+    val rawName = dbProfile?.name.takeIf { it?.isNotBlank() == true }
         ?: firebaseUser?.displayName.orEmpty()
     val showingGreeting = rawName.isNotBlank()
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -117,11 +107,7 @@ fun AppNavHost() {
                 .padding(innerPadding)
         ) {
             // ── Header ──
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-            ) {
+            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
                 if (showingGreeting) {
                     Column(
                         Modifier
@@ -135,8 +121,7 @@ fun AppNavHost() {
                 ThemedAppLogo(Modifier.align(Alignment.Center).size(120.dp))
                 Text(
                     text = if (firebaseUser == null) "Login" else "Logout",
-                    style = MaterialTheme.typography.bodyLarge
-                        .copy(color = MaterialTheme.colorScheme.primary),
+                    style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary),
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = 16.dp)
@@ -147,10 +132,8 @@ fun AppNavHost() {
                 )
             }
 
-            // ── Trial reminder ──
-            TrialReminderBanner(trialStart = trialStart) {
-                /* navigate to subscription */
-            }
+            // ── Trial banner ──
+            TrialReminderBanner(trialStart = trialStart) { /* to subscription */ }
 
             // ── Auth dialogs ──
             if (showLogin) {
@@ -170,7 +153,7 @@ fun AppNavHost() {
                 )
             }
 
-            // ── Main nav host ──
+            // ── NavHost ──
             Box(Modifier.weight(1f)) {
                 NavHost(navController, startDestination = "home", Modifier.fillMaxSize()) {
                     composable("home") {
@@ -199,38 +182,44 @@ fun AppNavHost() {
                     }
 
                     composable("scan") {
+                        // hard-gate: if not allowed, bounce home
+                        LaunchedEffect(role, isTrialActive) {
+                            if (!((role == UserRole.User && isTrialActive)
+                                        || role == UserRole.Subscriber
+                                        || role == UserRole.Admin)) {
+                                navController.navigate("home") { popUpTo("home") }
+                            }
+                        }
                         if ((role == UserRole.User && isTrialActive)
                             || role == UserRole.Subscriber
                             || role == UserRole.Admin
                         ) {
                             ScanScreen()
-                        } else {
-                            UpgradePromptDialog(
-                                onSubscribe = { /* ... */ },
-                                onDismiss   = { navController.navigate("home") }
-                            )
                         }
                     }
 
                     composable("invoice") {
+                        // hard-gate: if not allowed, bounce home
+                        LaunchedEffect(role, isTrialActive) {
+                            if (!((role == UserRole.User && isTrialActive)
+                                        || role == UserRole.Subscriber
+                                        || role == UserRole.Admin)) {
+                                navController.navigate("home") { popUpTo("home") }
+                            }
+                        }
                         if ((role == UserRole.User && isTrialActive)
                             || role == UserRole.Subscriber
                             || role == UserRole.Admin
                         ) {
                             InvoiceScreen()
-                        } else {
-                            UpgradePromptDialog(
-                                onSubscribe = { /* ... */ },
-                                onDismiss   = { navController.navigate("home") }
-                            )
                         }
                     }
 
                     composable("admin") {
                         AdminScreen(
-                            currentRole    = role,
-                            isTrialActive  = isTrialActive,
-                            onUpgradeClick = { /* ... */ }
+                            currentRole   = role,
+                            isTrialActive = isTrialActive,
+                            onUpgradeClick = { /* … */ }
                         )
                     }
 

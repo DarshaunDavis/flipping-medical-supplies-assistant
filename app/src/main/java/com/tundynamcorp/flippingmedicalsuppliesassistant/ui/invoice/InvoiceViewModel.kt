@@ -3,6 +3,7 @@ package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,4 +37,17 @@ class InvoiceViewModel : ViewModel() {
             }
         }
     }
+
+    fun recordInvoice(onComplete: (() -> Unit)? = null) {
+        val uid = auth.currentUser?.uid ?: return
+        val monthKey = SimpleDateFormat("yyyyMM", Locale.US).format(Date())
+        // push a simple timestamp under /invoices/{uid}/{yyyyMM}
+        db.child(uid).child(monthKey).push()
+            .setValue(ServerValue.TIMESTAMP)
+            .addOnSuccessListener {
+                // bump local flow immediately
+                _countThisMonth.value += 1
+                onComplete?.invoke()
+            }
+        }
 }

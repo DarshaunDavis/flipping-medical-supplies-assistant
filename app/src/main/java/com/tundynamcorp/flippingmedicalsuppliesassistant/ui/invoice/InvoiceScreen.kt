@@ -1,5 +1,6 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
+import android.app.Activity
 import android.content.Context
 import android.print.PrintAttributes
 import android.print.PrintManager
@@ -30,6 +31,8 @@ fun InvoiceScreen(
     invoiceVm: InvoiceViewModel         = viewModel()
 ) {
     val context = LocalContext.current
+    // to pop back to HomeScreen on “Not now”
+    val activity = context as? Activity
 
     // — wizard state
     var step by rememberSaveable { mutableIntStateOf(1) }
@@ -38,8 +41,8 @@ fun InvoiceScreen(
     var lines: List<InvoiceLine>  by remember { mutableStateOf(emptyList()) }
 
     // — gating & trial
-    val role           by authVm.role.collectAsState()
-    val isTrialActive  by authVm.isTrialActive.collectAsState()
+    val role              by authVm.role.collectAsState()
+    val isTrialActive     by authVm.isTrialActive.collectAsState()
     val invoicesThisMonth by invoiceVm.countThisMonth.collectAsState()
 
     // — upgrade dialog
@@ -138,10 +141,15 @@ fun InvoiceScreen(
                     }
 
                     Spacer(Modifier.height(16.dp))
-                    HorizontalDivider()
+                    HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
 
                     // ── Line Items Table Header ──
-                    Row(Modifier.fillMaxWidth().background(Color(0xFFF0F0F0)).padding(8.dp)) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF0F0F0))
+                            .padding(8.dp)
+                    ) {
                         Text("Description", Modifier.weight(0.5f), fontWeight = FontWeight.SemiBold)
                         Text("Qty", Modifier.weight(0.1f), fontWeight = FontWeight.SemiBold)
                         Text("Unit price", Modifier.weight(0.2f), fontWeight = FontWeight.SemiBold)
@@ -158,7 +166,7 @@ fun InvoiceScreen(
                         }
                     }
 
-                    HorizontalDivider()
+                    HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
 
                     // ── Totals ──
                     val subtotal = lines.sumOf { it.lineTotal.toDouble()  }
@@ -191,6 +199,7 @@ fun InvoiceScreen(
                         Button(
                             onClick = {
                                 if (canPrint) {
+                                    // — generate & launch system print
                                     val file = InvoicePdfGenerator.generate(
                                         context = context,
                                         seller  = sellerInfo!!,
@@ -203,6 +212,8 @@ fun InvoiceScreen(
                                             PdfDocumentAdapter(file.absolutePath),
                                             PrintAttributes.Builder().build()
                                         )
+                                    // **record** this invoice immediately
+                                    invoiceVm.recordInvoice()
                                 } else {
                                     showUpgrade = true
                                 }
@@ -218,7 +229,11 @@ fun InvoiceScreen(
                 if (showUpgrade) {
                     UpgradePromptDialog(
                         onSubscribe = { /* navigate to subscription */ },
-                        onDismiss   = { showUpgrade = false; step = 0 /* or navigate home */ }
+                        onDismiss   = {
+                            showUpgrade = false
+                            // pop back to HomeScreen so they’re never “stuck”
+                            activity?.onBackPressed()
+                        }
                     )
                 }
             }

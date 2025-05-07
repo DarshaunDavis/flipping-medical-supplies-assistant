@@ -1,24 +1,27 @@
-// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/subscription/SubscriptionScreen.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.subscription
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscriptionScreen(
-    navController: NavController
+    navController: NavController,      // used for the back arrow
+    onPurchaseMonthly: () -> Unit = {},// placeholder
+    onPurchaseAnnual: () -> Unit = {}  // placeholder
 ) {
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = { Text("Choose a Plan") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -28,55 +31,70 @@ fun SubscriptionScreen(
             )
         }
     ) { innerPadding ->
+        val scroll = rememberScrollState()
         Column(
             Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .padding(16.dp),
+                .verticalScroll(scroll)
+                .padding(horizontal = 16.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            PlanCard(
-                title = "Monthly",
-                price = "$20 / month",
-                onSubscribe = { /* TODO: hook up monthly purchase */ }
-            )
-            PlanCard(
-                title = "Annual",
-                price = "$180 / year",
-                onSubscribe = { /* TODO: hook up annual purchase */ }
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlanCard(
-    title: String,
-    price: String,
-    onSubscribe: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(title, style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(4.dp))
-                Text(price, style = MaterialTheme.typography.bodyLarge)
+            // ► Major benefits
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Why Upgrade?", style = MaterialTheme.typography.titleMedium)
+                Text("• Real-time barcode scanning of products")
+                Text("• One-tap professional invoice generation & PDF export")
+                Text("• Store and reuse your profile for fast invoicing")
+                Text("• Admin dashboard for profit margins & product management")
+                Text("• Ad-free experience and priority support")
             }
-            Button(
-                onClick = onSubscribe,
-                modifier = Modifier.align(Alignment.End)
+
+            // ► Plan cards side-by-side
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Text("Subscribe")
+                // — Monthly plan
+                Card(
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Monthly", style = MaterialTheme.typography.titleMedium)
+                        Text("$20 / month", style = MaterialTheme.typography.bodyLarge)
+                        Button(onClick = onPurchaseMonthly) {
+                            Text("Subscribe")
+                        }
+                    }
+                }
+
+                // — Annual plan
+                Card(
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Annual", style = MaterialTheme.typography.titleMedium)
+                        Text("$180 / year", style = MaterialTheme.typography.bodyLarge)
+                        Button(onClick = onPurchaseAnnual) {
+                            Text("Subscribe")
+                        }
+                    }
+                }
             }
         }
     }

@@ -68,7 +68,7 @@ class AuthViewModel : ViewModel() {
                     })
                 // load trialStart timestamp
                 dbRef.child(u.uid).child("trialStart")
-                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                    .addValueEventListener(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
                             _trialStart.value = snapshot.getValue(Long::class.java)
                         }

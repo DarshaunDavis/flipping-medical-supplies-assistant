@@ -1,3 +1,4 @@
+// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/invoice/InvoiceStep3Screen.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
 import android.app.DatePickerDialog
@@ -11,7 +12,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,42 +46,76 @@ fun InvoiceStep3Screen(
     var expDate by rememberSaveable { mutableStateOf<String?>(null) }
     var datePickerVisible by rememberSaveable { mutableStateOf(false) }
 
-    // 3️⃣ Quantity
+    // 3️⃣ Condition
+    var selectedCondition by rememberSaveable { mutableStateOf<String?>(null) }
+    var condExpanded by remember { mutableStateOf(false) }
+    val conditionOptions = listOf("New", "Dinged", "Damaged")
+
+    // 4️⃣ Quantity
     var quantityStr by rememberSaveable { mutableStateOf("1") }
     val quantity = quantityStr.toIntOrNull() ?: 1
 
-    // 4️⃣ Fetch raw price history when product changes
+    // 5️⃣ Fetch raw price history when product changes
     var rawHistory by remember { mutableStateOf<PriceHistory?>(null) }
     LaunchedEffect(selectedProd) {
         selectedProd?.let {
             rawHistory = repo.getPriceHistory(it.category, it.barcode)
             expDate = null
+            selectedCondition = null
         }
     }
 
-    // 5️⃣ Compute unitPrice based on expDate & rawHistory
+    // 6️⃣ Compute unitPrice based on expDate, history & condition
     var unitPrice by rememberSaveable { mutableStateOf<Float?>(null) }
-    LaunchedEffect(expDate, rawHistory) {
-        val dateStr = expDate
+    LaunchedEffect(expDate, rawHistory, selectedCondition) {
         val history = rawHistory
-        if (dateStr != null && history != null) {
+        val dateStr = expDate
+        if (history != null && dateStr != null) {
             try {
                 val fmt = SimpleDateFormat("M/d/yyyy", Locale.US)
-                val base = fmt.parse(history.lastUpdated)!!
-                val chosen = fmt.parse(dateStr)!!
-                val calSel = Calendar.getInstance().apply { time = chosen }
-                val calBase = Calendar.getInstance().apply { time = base }
+                val baseDate = fmt.parse(history.lastUpdated)!!
+                val selDate  = fmt.parse(dateStr)!!
+                val calSel = Calendar.getInstance().apply { time = selDate }
+                val calBase = Calendar.getInstance().apply { time = baseDate }
                 val diffMonths = (calSel.get(Calendar.YEAR) - calBase.get(Calendar.YEAR)) * 12 +
                         (calSel.get(Calendar.MONTH) - calBase.get(Calendar.MONTH))
                 val idx = if (diffMonths > 11) 0 else (11 - diffMonths).coerceAtLeast(0)
-                unitPrice = history.prices.getOrNull(idx)
+                val prices = history.prices
+                val basePrice = prices.getOrNull(idx) ?: prices.last()
+
+                // apply “Dinged” / “Damaged” rules
+                unitPrice = when (selectedCondition) {
+                    "Dinged" -> {
+                        when (selectedCat) {
+                            "Test Strips" -> basePrice - 3f
+                            "Devices"    ->
+                                if (selectedProd!!.description.contains("DexcomG6", true))
+                                    basePrice - 15f else basePrice - 5f
+                            else -> basePrice
+                        }
+                    }
+                    "Damaged" -> {
+                        when (selectedCat) {
+                            "Test Strips" ->
+                                if (idx in 0..3) prices.getOrElse(4) { basePrice }
+                                else basePrice
+                            "Devices"    ->
+                                if (selectedProd!!.description.contains("DexcomG6", true))
+                                    basePrice - 15f else basePrice - 5f
+                            else -> basePrice
+                        }
+                    }
+                    else -> basePrice // “New” or null
+                }
             } catch (_: Exception) {
                 unitPrice = null
             }
+        } else {
+            unitPrice = null
         }
     }
 
-    // 6️⃣ Filter products for the selected category
+    // 7️⃣ Filter products for the selected category
     val allProducts by repo.getAllProducts().collectAsState(emptyList())
     val prodsForCat = selectedCat?.let { cat ->
         allProducts.filter { it.category == cat }
@@ -117,12 +151,10 @@ fun InvoiceStep3Screen(
                 readOnly = true,
                 singleLine = true,
                 label = { Text("Category") },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(catExpanded)
-                },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(catExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = catExpanded,
@@ -152,12 +184,10 @@ fun InvoiceStep3Screen(
                 readOnly = true,
                 singleLine = true,
                 label = { Text("Product") },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(prodExpanded)
-                },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(prodExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = prodExpanded,
@@ -187,10 +217,43 @@ fun InvoiceStep3Screen(
                     expDate = "${m + 1}/$d/$y"
                     datePickerVisible = false
                 },
-                onDismiss = {
-                    datePickerVisible = false
-                }
+                onDismiss = { datePickerVisible = false }
             )
+        }
+
+        // Condition dropdown
+        selectedCondition?.let {
+            Text("Product Condition", style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(4.dp))
+        }
+        ExposedDropdownMenuBox(
+            expanded = condExpanded,
+            onExpandedChange = { condExpanded = it }
+        ) {
+            TextField(
+                value = selectedCondition ?: "Select Condition",
+                onValueChange = {},
+                readOnly = true,
+                singleLine = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(condExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(
+                expanded = condExpanded,
+                onDismissRequest = { condExpanded = false }
+            ) {
+                conditionOptions.forEach { cond ->
+                    DropdownMenuItem(
+                        text = { Text(cond) },
+                        onClick = {
+                            selectedCondition = cond
+                            condExpanded = false
+                        }
+                    )
+                }
+            }
         }
 
         // Quantity field
@@ -231,16 +294,16 @@ fun InvoiceStep3Screen(
                     selectedCat = null
                     selectedProd = null
                     expDate = null
+                    selectedCondition = null
                     quantityStr = "1"
                     unitPrice = null
                 },
-                enabled = selectedProd != null && unitPrice != null
+                enabled = selectedProd != null && unitPrice != null && selectedCondition != null
             ) {
                 Text("Add Another")
             }
             Button(
                 onClick = {
-                    // If user has a selection, add it; otherwise rely on existingLines
                     selectedProd?.let { prod ->
                         val price = unitPrice!!
                         onAddLine(InvoiceLine(prod.description, expDate!!, price, quantity))
@@ -248,7 +311,7 @@ fun InvoiceStep3Screen(
                     onDone()
                 },
                 enabled = existingLines.isNotEmpty() ||
-                        (selectedProd != null && unitPrice != null)
+                        (selectedProd != null && unitPrice != null && selectedCondition != null)
             ) {
                 Text("Done")
             }

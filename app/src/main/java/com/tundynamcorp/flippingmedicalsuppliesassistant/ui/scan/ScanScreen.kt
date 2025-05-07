@@ -160,7 +160,7 @@ fun ScanScreen() {
                         ShowDatePicker(
                             context,
                             onDateSelected = { y, m, d ->
-                                selectedDate = "${m + 1}/$d/$y"
+                                selectedDate = "${m+1}/$d/$y"
                                 datePickerVisible = false
                             },
                             onDismiss = { datePickerVisible = false }
@@ -218,14 +218,46 @@ fun ScanScreen() {
                             val selCal = Calendar.getInstance().apply { time = selDate!! }
                             val baseCal = Calendar.getInstance().apply { time = baseDate!! }
                             val yearDiff = selCal.get(Calendar.YEAR) - baseCal.get(Calendar.YEAR)
-                            val monDiff = selCal.get(Calendar.MONTH) - baseCal.get(Calendar.MONTH)
-                            val diff = yearDiff * 12 + monDiff
+                            val monDiff  = selCal.get(Calendar.MONTH) - baseCal.get(Calendar.MONTH)
+                            val diff     = yearDiff * 12 + monDiff
 
                             if (diff < 2) {
                                 reject = true
                             } else {
+                                // pick historical price index
                                 val idx = if (diff > 11) 0 else 11 - diff
-                                resultPrice = ph!!.prices[idx]
+                                val basePrice = ph!!.prices[idx]
+
+                                // apply condition-based adjustment:
+                                val cat = prod.category.lowercase(Locale.US)
+                                val desc = prod.description
+                                resultPrice = when (selectedCondition) {
+                                    "Dinged" -> {
+                                        when {
+                                            cat == "test strips" ->
+                                                basePrice - 3f
+                                            cat == "devices" ->
+                                                if (desc.contains("Dexcom G6", true))
+                                                    basePrice - 15f
+                                                else basePrice - 5f
+                                            else -> basePrice
+                                        }
+                                    }
+                                    "Damaged" -> {
+                                        if (cat == "test strips") {
+                                            // if within the first 4 months use month-5 price
+                                            if (idx in 0..3)
+                                                ph!!.prices.getOrElse(4) { basePrice }
+                                            else basePrice
+                                        } else if (cat == "devices") {
+                                            // same % reduction for any damage on devices
+                                            if (desc.contains("Dexcom G6", true))
+                                                basePrice - 15f
+                                            else basePrice - 5f
+                                        } else basePrice
+                                    }
+                                    else -> basePrice // "New" or any other
+                                }
                             }
                             datePickerVisible = false
                             condDropdownExpanded = false

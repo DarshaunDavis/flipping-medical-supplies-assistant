@@ -1,3 +1,4 @@
+// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/invoice/InvoiceStep2Screen.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
 import androidx.compose.foundation.layout.*
@@ -6,9 +7,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
@@ -20,8 +22,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,39 +60,32 @@ fun InvoiceStep2Screen(
             zip      = parts.getOrNull(5).orEmpty()
         )
     }
+
+    // Spinner options: only “Select Existing Buyer” + names
     val buyerOptions = listOf("Select Existing Buyer") +
-            buyers.map { it.name } +
-            listOf("Manual Entry")
-    var buyerExpanded by rememberSaveable { mutableStateOf(false) }
-    var selectedBuyer by rememberSaveable { mutableStateOf(buyerOptions[0]) }
+            buyers.map { it.name }
+
+    var buyerExpanded      by rememberSaveable { mutableStateOf(false) }
+    var selectedBuyer      by rememberSaveable { mutableStateOf(buyerOptions[0]) }
 
     // form fields
-    var clientName     by rememberSaveable { mutableStateOf(initial?.clientName ?: "") }
-    var clientAddress1 by rememberSaveable { mutableStateOf(initial?.clientAddress1 ?: "") }
-    var clientAddress2 by rememberSaveable { mutableStateOf(initial?.clientAddress2.orEmpty()) }
-    var clientCity     by rememberSaveable { mutableStateOf(initial?.clientCity ?: "") }
-    var clientState    by rememberSaveable { mutableStateOf(initial?.clientState ?: "") }
-    var clientZip      by rememberSaveable { mutableStateOf(initial?.clientZip ?: "") }
-    var invoiceNum     by rememberSaveable { mutableStateOf(initial?.invoiceNumber.orEmpty()) }
+    var clientName         by rememberSaveable { mutableStateOf(initial?.clientName ?: "") }
+    var clientAddress1     by rememberSaveable { mutableStateOf(initial?.clientAddress1 ?: "") }
+    var clientAddress2     by rememberSaveable { mutableStateOf(initial?.clientAddress2.orEmpty()) }
+    var clientCity         by rememberSaveable { mutableStateOf(initial?.clientCity ?: "") }
+    var clientState        by rememberSaveable { mutableStateOf(initial?.clientState ?: "") }
+    var clientZip          by rememberSaveable { mutableStateOf(initial?.clientZip ?: "") }
+    var invoiceNum         by rememberSaveable { mutableStateOf(initial?.invoiceNumber.orEmpty()) }
 
-    val payableTo = remember(sellerInfo) { sellerInfo.dba ?: sellerInfo.name }
+    val payableTo  = remember(sellerInfo) { sellerInfo.dba ?: sellerInfo.name }
     val statesList = stringArrayResource(id = R.array.states).toList()
-    var stateDropdownExpanded by remember { mutableStateOf(false) }
-    val scrollState = rememberScrollState()
 
-    // FocusRequester for invoice number
+    // FocusRequesters
+    val stateRequester      = remember { FocusRequester() }
     val invoiceNumRequester = remember { FocusRequester() }
-    var zipNextPressed by remember { mutableStateOf(false) }
 
-    LaunchedEffect(zipNextPressed) {
-        if (zipNextPressed) {
-            snapshotFlow { zipNextPressed }
-                .filter { it }
-                .first()
-            invoiceNumRequester.requestFocus()
-            zipNextPressed = false
-        }
-    }
+    var stateDropdownExpanded by remember { mutableStateOf(false) }
+    val scrollState            = rememberScrollState()
 
     Column(
         Modifier
@@ -103,7 +96,7 @@ fun InvoiceStep2Screen(
     ) {
         Text("Step 2: Invoice Details", style = MaterialTheme.typography.titleLarge)
 
-        // Buyer spinner
+        // ── Buyer spinner ──
         ExposedDropdownMenuBox(
             expanded = buyerExpanded,
             onExpandedChange = { buyerExpanded = it }
@@ -129,24 +122,23 @@ fun InvoiceStep2Screen(
                         onClick = {
                             selectedBuyer = opt
                             buyerExpanded = false
-                            when {
-                                opt == "Manual Entry" || opt == buyerOptions[0] -> {
-                                    clientName = ""
-                                    clientAddress1 = ""
-                                    clientAddress2 = ""
-                                    clientCity = ""
-                                    clientState = ""
-                                    clientZip = ""
-                                }
-                                else -> {
-                                    val info = buyers.first { it.name == opt }
-                                    clientName     = info.name
-                                    clientAddress1 = info.address1
-                                    clientAddress2 = info.address2.orEmpty()
-                                    clientCity     = info.city
-                                    clientState    = info.state
-                                    clientZip      = info.zip
-                                }
+                            if (opt == buyerOptions[0]) {
+                                // clear for manual entry
+                                clientName     = ""
+                                clientAddress1 = ""
+                                clientAddress2 = ""
+                                clientCity     = ""
+                                clientState    = ""
+                                clientZip      = ""
+                            } else {
+                                // populate from buyers list
+                                val info = buyers.first { it.name == opt }
+                                clientName     = info.name
+                                clientAddress1 = info.address1
+                                clientAddress2 = info.address2.orEmpty()
+                                clientCity     = info.city
+                                clientState    = info.state
+                                clientZip      = info.zip
                             }
                             focusManager.clearFocus()
                         }
@@ -155,7 +147,7 @@ fun InvoiceStep2Screen(
             }
         }
 
-        // Client Name
+        // ── Client Name ──
         OutlinedTextField(
             value = clientName,
             onValueChange = { clientName = it.normalize() },
@@ -172,7 +164,7 @@ fun InvoiceStep2Screen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Address Line 1
+        // ── Address Line 1 ──
         OutlinedTextField(
             value = clientAddress1,
             onValueChange = { clientAddress1 = it.normalize() },
@@ -189,7 +181,7 @@ fun InvoiceStep2Screen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Address Line 2
+        // ── Address Line 2 ──
         OutlinedTextField(
             value = clientAddress2,
             onValueChange = { clientAddress2 = it.normalize() },
@@ -206,7 +198,7 @@ fun InvoiceStep2Screen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // City -> open state spinner
+        // ── City ──
         OutlinedTextField(
             value = clientCity,
             onValueChange = { clientCity = it.normalize() },
@@ -218,12 +210,15 @@ fun InvoiceStep2Screen(
                 imeAction = ImeAction.Next
             ),
             keyboardActions = KeyboardActions(
-                onNext = { stateDropdownExpanded = true }
+                onNext = {
+                    stateDropdownExpanded = true
+                    stateRequester.requestFocus()
+                }
             ),
             modifier = Modifier.fillMaxWidth()
         )
 
-        // State spinner
+        // ── State spinner ──
         ExposedDropdownMenuBox(
             expanded = stateDropdownExpanded,
             onExpandedChange = { stateDropdownExpanded = it }
@@ -237,6 +232,7 @@ fun InvoiceStep2Screen(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(stateDropdownExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .focusRequester(stateRequester)
                     .menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
@@ -256,7 +252,7 @@ fun InvoiceStep2Screen(
             }
         }
 
-        // Zip Code -> skip to invoice number
+        // ── Zip Code ──
         OutlinedTextField(
             value = clientZip,
             onValueChange = { clientZip = it.filter(Char::isDigit) },
@@ -267,12 +263,12 @@ fun InvoiceStep2Screen(
                 imeAction = ImeAction.Next
             ),
             keyboardActions = KeyboardActions(
-                onNext = { zipNextPressed = true }
+                onNext = { invoiceNumRequester.requestFocus() }
             ),
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Payable To
+        // ── Payable To ──
         OutlinedTextField(
             value = payableTo,
             onValueChange = {},
@@ -282,7 +278,7 @@ fun InvoiceStep2Screen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Invoice # -> focusRequester
+        // ── Invoice # ──
         OutlinedTextField(
             value = invoiceNum,
             onValueChange = { invoiceNum = it.filter(Char::isDigit) },
@@ -302,6 +298,7 @@ fun InvoiceStep2Screen(
 
         Spacer(Modifier.height(24.dp))
 
+        // ── Navigation buttons ──
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -323,8 +320,8 @@ fun InvoiceStep2Screen(
                     )
                 },
                 enabled = listOf(
-                    clientName, clientAddress1, clientCity,
-                    clientState, clientZip
+                    clientName, clientAddress1,
+                    clientCity, clientState, clientZip
                 ).all { it.isNotBlank() }
             ) {
                 Text("Next")

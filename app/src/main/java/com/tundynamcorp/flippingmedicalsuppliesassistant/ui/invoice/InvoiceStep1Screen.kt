@@ -6,7 +6,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -42,26 +41,31 @@ data class SellerInfo(
 fun InvoiceStep1Screen(
     onNext: (SellerInfo) -> Unit,
     settingsViewModel: SettingsViewModel = viewModel(),
-    authViewModel: AuthViewModel       = viewModel()
+    authViewModel:    AuthViewModel      = viewModel()
 ) {
-    // DataStore / RTDB profile
-    val localProfile by settingsViewModel.profileInfo.collectAsState()
+    // 1️⃣ Pull in stored profile info
+    val localProfile  by settingsViewModel.profileInfo.collectAsState()
     val remoteProfile by authViewModel.profileInfo.collectAsState()
 
     var useProfile by rememberSaveable { mutableStateOf(false) }
 
-    // Form state
+    // 2️⃣ Form state
     var name     by rememberSaveable { mutableStateOf("") }
     var dba      by rememberSaveable { mutableStateOf("") }
     var address1 by rememberSaveable { mutableStateOf("") }
     var address2 by rememberSaveable { mutableStateOf("") }
     var city     by rememberSaveable { mutableStateOf("") }
     var state    by rememberSaveable { mutableStateOf("") }
+
+    // ── UPDATED ── restrict zip to digits, max length 5
     var zip      by rememberSaveable { mutableStateOf("") }
+
+    // ── UPDATED ── restrict phone to digits, max length 9
     var phone    by rememberSaveable { mutableStateOf("") }
+
     var email    by rememberSaveable { mutableStateOf("") }
 
-    // Populate / clear when toggling
+    // 3️⃣ Populate or clear when toggling “Use profile”
     LaunchedEffect(useProfile) {
         if (useProfile) {
             val p = remoteProfile ?: localProfile
@@ -104,8 +108,7 @@ fun InvoiceStep1Screen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = useProfile,
-                    onCheckedChange = { useProfile = it },
-                    colors = CheckboxDefaults.colors()
+                    onCheckedChange = { useProfile = it }
                 )
                 Spacer(Modifier.width(8.dp))
                 Text("Use profile information")
@@ -113,7 +116,7 @@ fun InvoiceStep1Screen(
 
             Text("Step 1: Seller Information", style = MaterialTheme.typography.titleLarge)
 
-            // Name
+            // — Name —
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it.normalize() },
@@ -130,7 +133,7 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // DBA
+            // — DBA —
             OutlinedTextField(
                 value = dba,
                 onValueChange = { dba = it.normalize() },
@@ -147,7 +150,7 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Address Line 1
+            // — Address Line 1 —
             OutlinedTextField(
                 value = address1,
                 onValueChange = { address1 = it.normalize() },
@@ -164,7 +167,7 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Address Line 2
+            // — Address Line 2 —
             OutlinedTextField(
                 value = address2,
                 onValueChange = { address2 = it.normalize() },
@@ -181,7 +184,7 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // City -> opens state spinner on Next
+            // — City (opens state spinner on Next) —
             OutlinedTextField(
                 value = city,
                 onValueChange = { city = it.normalize() },
@@ -198,17 +201,15 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // State spinner
+            // — State spinner —
             ExposedDropdownMenuBox(
                 expanded = stateDropdownExpanded,
                 onExpandedChange = { stateDropdownExpanded = it }
             ) {
                 TextField(
                     value = state.ifBlank { "Select State" },
-                    onValueChange = { },
+                    onValueChange = {},
                     readOnly = true,
-                    singleLine = true,
-                    label = { Text("State") },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(stateDropdownExpanded)
                     },
@@ -233,10 +234,10 @@ fun InvoiceStep1Screen(
                 }
             }
 
-            // Zip
+            // ── ZIP CODE (digits only, max 5) ──
             OutlinedTextField(
                 value = zip,
-                onValueChange = { zip = it.filter(Char::isDigit) },
+                onValueChange = { zip = it.filter(Char::isDigit).take(5) },
                 label = { Text("Zip Code") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -249,10 +250,10 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Phone
+            // ── PHONE (digits only, max 9) ──
             OutlinedTextField(
                 value = phone,
-                onValueChange = { phone = it },
+                onValueChange = { phone = it.filter(Char::isDigit).take(9) },
                 label = { Text("Phone") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -265,7 +266,7 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Email
+            // — Email —
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it.normalize() },

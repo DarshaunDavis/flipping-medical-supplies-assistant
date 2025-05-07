@@ -3,7 +3,6 @@
     <string name="lislal_logo">Lislal Logo</string>
     <string name="test_strip_marketplace_logo">Test Strip Marketplace Logo</string>
     <string-array name="buyer_list">
-        <item>John Doe|123 Main St|Apt 4B|Springfield|IL|62704</item>
-        <item>Acme Corp|456 Elm St||Metropolis|NY|10001</item>
+        <item>Strip Flip|261 Starlight Drive||Middleburg|PA|17842</item>
     </string-array>
 </resources>

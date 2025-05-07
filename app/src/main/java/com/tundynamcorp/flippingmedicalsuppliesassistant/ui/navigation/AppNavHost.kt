@@ -26,6 +26,7 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.ads.BannerAd
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.LoginDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.RegisterDialog
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.common.UpgradePromptDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components.TrialReminderBanner
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigationBar
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
@@ -33,6 +34,7 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDia
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice.InvoiceScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.scan.ScanScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsScreen
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.subscription.SubscriptionScreen
 import java.util.Calendar
 
 @Composable
@@ -195,6 +197,11 @@ fun AppNavHost() {
                             || role == UserRole.Admin
                         ) {
                             ScanScreen()
+                        } else {
+                            UpgradePromptDialog(
+                                onSubscribe = { navController.navigate("subscription") },
+                                onDismiss   = { navController.navigate("home") }
+                                        )
                         }
                     }
 
@@ -212,6 +219,11 @@ fun AppNavHost() {
                             || role == UserRole.Admin
                         ) {
                             InvoiceScreen()
+                        } else {
+                            UpgradePromptDialog(
+                                onSubscribe = { navController.navigate("subscription") },
+                                onDismiss   = { navController.navigate("home") }
+                            )
                         }
                     }
 
@@ -226,6 +238,10 @@ fun AppNavHost() {
                     composable("settings") {
                         SettingsScreen()
                     }
+
+                    composable("subscription") {
+                        SubscriptionScreen(navController)
+                        }
                 }
             }
 

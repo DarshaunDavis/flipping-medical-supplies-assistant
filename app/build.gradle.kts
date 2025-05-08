@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.tundynamcorp.flippingmedicalsuppliesassistant"
-        minSdk = 34
+        minSdk = 23
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"

@@ -1,4 +1,3 @@
-// AccountTab.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings
 
 import androidx.compose.foundation.layout.*
@@ -6,22 +5,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import android.widget.Toast
-import androidx.compose.ui.Alignment
-import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components.TrialCountdown
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 
 @Composable
 fun AccountTab(
     authViewModel: AuthViewModel = viewModel()
 ) {
-    val context = LocalContext.current
+    val context     = LocalContext.current
     val scrollState = rememberScrollState()
-    val trialStart by authViewModel.trialStart.collectAsState()
 
     var currentPwd by remember { mutableStateOf("") }
     var newPwd     by remember { mutableStateOf("") }
@@ -44,8 +41,6 @@ fun AccountTab(
         horizontalAlignment   = Alignment.CenterHorizontally
     ) {
         Text("Account Settings", style = MaterialTheme.typography.titleLarge)
-
-        TrialCountdown(trialStart = trialStart, modifier = Modifier.padding(bottom = 16.dp))
 
         OutlinedTextField(
             value = currentPwd,
@@ -81,10 +76,7 @@ fun AccountTab(
                     loading = false
                     if (success) {
                         Toast.makeText(context, "Password changed", Toast.LENGTH_SHORT).show()
-                        // Clear fields
-                        currentPwd = ""
-                        newPwd = ""
-                        confirmPwd = ""
+                        currentPwd = ""; newPwd = ""; confirmPwd = ""
                     } else {
                         errorMsg = err ?: "Failed to change password"
                     }
@@ -95,9 +87,7 @@ fun AccountTab(
         ) {
             if (loading) {
                 CircularProgressIndicator(
-                    modifier = Modifier
-                        .height(20.dp)
-                        .width(20.dp),
+                    modifier   = Modifier.size(20.dp),
                     strokeWidth = 2.dp
                 )
                 Spacer(Modifier.width(8.dp))

@@ -27,7 +27,7 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.LoginDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.RegisterDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.common.UpgradePromptDialog
-import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components.TrialReminderBanner
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components.TrialCountdown
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigationBar
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDialog
@@ -49,8 +49,8 @@ private fun ThemedAppLogo(modifier: Modifier = Modifier) {
 
 @Composable
 fun AppNavHost() {
-    val context  = LocalContext.current
-    val activity = context as? Activity
+    val context       = LocalContext.current
+    val activity      = context as? Activity
     val navController = rememberNavController()
 
     // double-back-to-exit
@@ -60,8 +60,9 @@ fun AppNavHost() {
             navController.popBackStack()
         } else {
             val now = System.currentTimeMillis()
-            if (now - lastBackPressTime < 2_000) activity?.finish()
-            else {
+            if (now - lastBackPressTime < 2_000) {
+                activity?.finish()
+            } else {
                 lastBackPressTime = now
                 Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
             }
@@ -69,7 +70,7 @@ fun AppNavHost() {
     }
 
     // Auth + role + trial
-    val authVm: AuthViewModel      = viewModel()
+    val authVm: AuthViewModel = viewModel()
     val firebaseUser by authVm.user.collectAsState()
     val dbProfile    by authVm.profileInfo.collectAsState()
     val role         by authVm.role.collectAsState()
@@ -109,7 +110,10 @@ fun AppNavHost() {
                 .padding(innerPadding)
         ) {
             // ── Header ──
-            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+            Box(Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+            ) {
                 if (showingGreeting) {
                     Column(
                         Modifier
@@ -120,10 +124,26 @@ fun AppNavHost() {
                         Text("$greetingRest,\n$rawName!", style = MaterialTheme.typography.bodyLarge)
                     }
                 }
-                ThemedAppLogo(Modifier.align(Alignment.Center).size(120.dp))
+
+                // logo + trial countdown in the center
+                Column(
+                    Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    ThemedAppLogo(Modifier.size(120.dp))
+                    Spacer(Modifier.height(8.dp))
+                    TrialCountdown(
+                        trialStart = trialStart,
+                        modifier   = Modifier.clickable {
+                            navController.navigate("subscription")
+                        }
+                    )
+                }
+
                 Text(
                     text = if (firebaseUser == null) "Login" else "Logout",
-                    style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary),
+                    style = MaterialTheme.typography.bodyLarge
+                        .copy(color = MaterialTheme.colorScheme.primary),
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = 16.dp)
@@ -133,9 +153,6 @@ fun AppNavHost() {
                         }
                 )
             }
-
-            // ── Trial banner ──
-            TrialReminderBanner(trialStart = trialStart) { /* to subscription */ }
 
             // ── Auth dialogs ──
             if (showLogin) {
@@ -155,13 +172,13 @@ fun AppNavHost() {
                 )
             }
 
-            // ── NavHost ──
+            // ── Main NavHost ──
             Box(Modifier.weight(1f)) {
                 NavHost(navController, startDestination = "home", Modifier.fillMaxSize()) {
                     composable("home") {
                         HomeScreen(
-                            products      = products,
-                            query         = query,
+                            products = products,
+                            query = query,
                             onQueryChange = { homeVm.onQueryChanged(it) },
                             onProductClick = { prod ->
                                 homeVm.loadPriceHistory(prod.category, prod.barcode)
@@ -172,10 +189,10 @@ fun AppNavHost() {
                             ?.takeIf { ph != null }
                             ?.let { prod ->
                                 PriceHistoryDialog(
-                                    title       = prod.description,
+                                    title = prod.description,
                                     lastUpdated = ph!!.lastUpdated,
-                                    prices      = ph!!.prices,
-                                    onDismiss   = {
+                                    prices = ph!!.prices,
+                                    onDismiss = {
                                         homeVm.clearPriceHistory()
                                         selectedProduct = null
                                     }
@@ -188,7 +205,8 @@ fun AppNavHost() {
                         LaunchedEffect(role, isTrialActive) {
                             if (!((role == UserRole.User && isTrialActive)
                                         || role == UserRole.Subscriber
-                                        || role == UserRole.Admin)) {
+                                        || role == UserRole.Admin)
+                            ) {
                                 navController.navigate("home") { popUpTo("home") }
                             }
                         }
@@ -200,8 +218,8 @@ fun AppNavHost() {
                         } else {
                             UpgradePromptDialog(
                                 onSubscribe = { navController.navigate("subscription") },
-                                onDismiss   = { navController.navigate("home") }
-                                        )
+                                onDismiss = { navController.navigate("home") }
+                            )
                         }
                     }
 
@@ -210,7 +228,8 @@ fun AppNavHost() {
                         LaunchedEffect(role, isTrialActive) {
                             if (!((role == UserRole.User && isTrialActive)
                                         || role == UserRole.Subscriber
-                                        || role == UserRole.Admin)) {
+                                        || role == UserRole.Admin)
+                            ) {
                                 navController.navigate("home") { popUpTo("home") }
                             }
                         }
@@ -222,14 +241,14 @@ fun AppNavHost() {
                         } else {
                             UpgradePromptDialog(
                                 onSubscribe = { navController.navigate("subscription") },
-                                onDismiss   = { navController.navigate("home") }
+                                onDismiss = { navController.navigate("home") }
                             )
                         }
                     }
 
                     composable("admin") {
                         AdminScreen(
-                            currentRole   = role,
+                            currentRole = role,
                             isTrialActive = isTrialActive,
                             onUpgradeClick = { /* … */ }
                         )
@@ -241,7 +260,7 @@ fun AppNavHost() {
 
                     composable("subscription") {
                         SubscriptionScreen(navController)
-                        }
+                    }
                 }
             }
 

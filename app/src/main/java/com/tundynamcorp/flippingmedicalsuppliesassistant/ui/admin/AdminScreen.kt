@@ -9,24 +9,25 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminViewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.UserRole
 
 @Composable
 fun AdminScreen(
+    homeViewModel: HomeViewModel,
     currentRole: UserRole,
-    isTrialActive: Boolean,             // ← new parameter
+    isTrialActive: Boolean,
     onUpgradeClick: () -> Unit,
-    viewModel: AdminViewModel = viewModel()
+    adminViewModel: AdminViewModel = viewModel()
 ) {
-    // tab titles and minimum role required
     val tabs = listOf("Profit Margin", "Prices", "Products")
     val minRequiredRole = listOf(
         UserRole.Guest,      // Profit Margin always enabled
-        UserRole.Subscriber, // Prices only for subs/admins (or trialers)
+        UserRole.Subscriber, // Prices only for subs/trialers/admins
         UserRole.User        // Products for users+trialers, subs, admins
     )
 
-    // Treat trialing User as Subscriber
+    // Treat a trialing User as a Subscriber
     val effectiveOrdinal = when {
         currentRole == UserRole.User && isTrialActive -> UserRole.Subscriber.ordinal
         else                                           -> currentRole.ordinal
@@ -39,24 +40,21 @@ fun AdminScreen(
             tabs.forEachIndexed { index, title ->
                 val enabled = effectiveOrdinal >= minRequiredRole[index].ordinal
                 Tab(
-                    selected = (index == selectedTab),
-                    onClick  = {
-                        if (enabled) selectedTab = index
-                        else          onUpgradeClick()
-                    },
-                    enabled = enabled,
-                    text    = { Text(title) }
+                    selected    = selectedTab == index,
+                    onClick     = { if (enabled) selectedTab = index else onUpgradeClick() },
+                    enabled     = enabled,
+                    text        = { Text(title) }
                 )
             }
         }
 
         when (selectedTab) {
             0 -> ProfitMarginTab(
-                margins = viewModel.margins.collectAsState().value,
-                onSubmit = viewModel::updateMargin
+                margins = adminViewModel.margins.collectAsState().value,
+                onSubmit = adminViewModel::updateMargin
             )
-            1 -> PricesTab()
-            2 -> ProductsTab()
+            1 -> PricesTab(homeViewModel)
+            2 -> ProductsTab(homeViewModel)
         }
     }
 }

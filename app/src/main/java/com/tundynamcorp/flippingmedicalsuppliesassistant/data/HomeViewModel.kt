@@ -13,19 +13,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val adminRepo    = AdminRepository(app)
     private val overrideRepo = PriceOverrideRepository(app)
 
-    private var lastCategory: String? = null
-    private var lastBarcode:  String? = null
-
-    /** Products & Search **/
+    // — raw product list from network
     private val _products = MutableStateFlow<List<Product>>(emptyList())
+    // — search query
     private val _query    = MutableStateFlow("")
-    val query: StateFlow<String> = _query
+    val query: StateFlow<String> = _query.asStateFlow()
 
-    // ➊ Keep track of which buyer (if any) is selected per category:
-    private val _selectedBuyerMap =
-        MutableStateFlow<Map<String, String?>>(emptyMap())
-    val selectedBuyerMap: StateFlow<Map<String, String?>> =
-        _selectedBuyerMap.asStateFlow()
+    // ➊ Track which buyer is selected per category
+    private val _selectedBuyerMap = MutableStateFlow<Map<String, String?>>(emptyMap())
+    val selectedBuyerMap: StateFlow<Map<String, String?>> = _selectedBuyerMap.asStateFlow()
 
     fun setSelectedBuyer(category: String, buyer: String?) {
         _selectedBuyerMap.update { old ->
@@ -33,35 +29,35 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ➋ Load the JSON index: category → (buyer → list of barcodes)
-    private val barcodesByCategoryAndBuyer = repo
-        .getBarcodesByCategoryAndBuyer()
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            emptyMap()
-        )
+    // ➋ Load index: category → ( buyer → list of barcodes )
+    private val barcodesByCategoryAndBuyer: StateFlow<Map<String, Map<String, List<String>>>> =
+        repo.getBarcodesByCategoryAndBuyer()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-
+    /**
+     * ➌ Combined, filtered list of products:
+     *   • Only categories whose toggle is ON
+     *   • Only if a buyer is selected for that category
+     *   • Only barcodes under that buyer in the index
+     *   • Then apply the text‐search filter
+     */
     val filteredProducts: StateFlow<List<Product>> = combine(
         _products,
         _query,
         adminRepo.visibilityFlow,
         selectedBuyerMap,
         barcodesByCategoryAndBuyer
-    ) { products, q, visMap, buyerMap, bcIndex ->
+    ) { products, q, visMap, buyerMap, index ->
         products
-            // only categories whose toggle is ON
             .filter { prod ->
-                (visMap[prod.category] ?: false)
-                        // AND if a buyer is selected, the barcode must live under that buyer
-                        && (buyerMap[prod.category]?.let { buyer ->
-                    bcIndex[prod.category]
-                        ?.get(buyer)
-                        ?.contains(prod.barcode) == true
-                } ?: true)
+                val cat = prod.category
+                val isVisible = visMap[cat] ?: false
+                val buyer     = buyerMap[cat]
+                // toggle must be on, a buyer must be chosen, and this barcode in their bucket
+                isVisible &&
+                        buyer != null &&
+                        (index[cat]?.get(buyer)?.contains(prod.barcode) == true)
             }
-            // then your existing search
             .let { list ->
                 if (q.isBlank()) list
                 else list.filter { it.description.startsWith(q, ignoreCase = true) }
@@ -72,7 +68,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             repo.getAllProducts()
-                .catch { /* log or handle */ }
+                .catch { /* log or handle error */ }
                 .collect { _products.value = it }
         }
     }
@@ -81,32 +77,21 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         _query.value = new
     }
 
-    /** Price‐History (with margin & overrides baked in) **/
+    // — Price history plumbing (unchanged) —
     private val _priceHistory = MutableStateFlow<PriceHistory?>(null)
-    val priceHistory: StateFlow<PriceHistory?> = _priceHistory
+    val priceHistory: StateFlow<PriceHistory?> = _priceHistory.asStateFlow()
 
     fun loadPriceHistory(category: String, barcode: String) {
-        lastCategory = category
-        lastBarcode  = barcode
-
         viewModelScope.launch {
-            // raw prices
             val raw = repo.getPriceHistory(category, barcode)
-
-            // apply any stored overrides
-            val allOverrides    = overrideRepo.overridesFlow.first()
-            val overridesForBar = allOverrides[barcode] ?: emptyMap()
-
-            // apply category margin
+            val overridesForBar = overrideRepo.overridesFlow.first()[barcode] ?: emptyMap()
             val marginPct = adminRepo.marginsFlow.first()[category] ?: 0.0
-
             val finalPrices = raw.prices.mapIndexed { idx, dbPrice ->
                 overridesForBar[idx]?.toFloat()
                     ?: ((dbPrice * (1 - marginPct / 100))
                         .roundToInt()
                         .toFloat())
             }
-
             _priceHistory.value = raw.copy(prices = finalPrices)
         }
     }
@@ -115,37 +100,25 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         _priceHistory.value = null
     }
 
-    /** Allow per‐month overrides of a barcode’s price **/
     fun overridePrice(barcode: String, index: Int, newPrice: Int) {
         viewModelScope.launch {
-            // persist override
             overrideRepo.setOverride(barcode, index, newPrice)
-            // update in‐memory immediately
             _priceHistory.value = _priceHistory.value
                 ?.copy(prices = _priceHistory.value!!.prices
                     .mapIndexed { i, v -> if (i == index) newPrice.toFloat() else v })
         }
     }
 
-    /** Clear all overrides for a barcode and reload its history **/
     fun resetOverrides(category: String, barcode: String) {
-        lastCategory = category
-        lastBarcode  = barcode
-
         viewModelScope.launch {
-            // remove persisted overrides
             overrideRepo.clearOverrides(barcode)
-            // re‐fetch fresh history (with only category margin)
-            lastCategory?.let { cat ->
-                lastBarcode?.let { code ->
-                    loadPriceHistory(cat, code)
-                }
-            }
+            loadPriceHistory(category, barcode)
         }
     }
 
-    /** Buyers by Category **/
+    // — Buyer list for your dropdowns (unchanged) —
     val buyersByCategory: StateFlow<Map<String, List<String>>> =
-        repo.getBuyersByCategory()
+        barcodesByCategoryAndBuyer
+            .map { index -> index.mapValues { it.value.keys.sorted() } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 }

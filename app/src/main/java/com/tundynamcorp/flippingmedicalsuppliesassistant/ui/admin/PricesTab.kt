@@ -5,7 +5,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
@@ -13,35 +12,26 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDia
 
 @Composable
 fun PricesTab(
-    homeViewModel: HomeViewModel = viewModel()
+    homeViewModel: HomeViewModel
 ) {
-    // 1) Observe query + filtered products from HomeViewModel
     val query    by homeViewModel.query.collectAsState()
     val products by homeViewModel.filteredProducts.collectAsState()
 
-    // 2) Local UI state for dialog flow
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     val ph by homeViewModel.priceHistory.collectAsState()
     var editingIndex by remember { mutableStateOf<Int?>(null) }
     var overrideInput by remember { mutableStateOf("") }
 
     Column(
-        modifier = Modifier
+        Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "Adjust or Customize Prices",
-            style = MaterialTheme.typography.titleLarge
-        )
-        Text(
-            text = "Tap a price below to override it, or reset all.",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text("Adjust or Customize Prices", style = MaterialTheme.typography.titleLarge)
+        Text("Tap a price below to override it, or reset all.", style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(8.dp))
 
-        // 3) Re-use HomeScreen for search + list; wire up onProductClick
         HomeScreen(
             products      = products,
             query         = query,
@@ -53,7 +43,6 @@ fun PricesTab(
         )
     }
 
-    // 4) Main price-history dialog (editable) in Admin → Prices
     if (selectedProduct != null && ph != null) {
         PriceHistoryDialog(
             title       = selectedProduct!!.description,
@@ -65,10 +54,7 @@ fun PricesTab(
                 overrideInput = ph!!.prices[idx].toInt().toString()
             },
             onReset = {
-                homeViewModel.resetOverrides(
-                    selectedProduct!!.category,
-                    selectedProduct!!.barcode
-                )
+                homeViewModel.resetOverrides(selectedProduct!!.category, selectedProduct!!.barcode)
             },
             onDismiss = {
                 homeViewModel.clearPriceHistory()
@@ -77,7 +63,6 @@ fun PricesTab(
         )
     }
 
-    // 5) Per-price override input dialog
     editingIndex?.let { idx ->
         AlertDialog(
             onDismissRequest = { editingIndex = null },
@@ -97,22 +82,13 @@ fun PricesTab(
             confirmButton = {
                 TextButton(onClick = {
                     overrideInput.toIntOrNull()?.let { newVal ->
-                        homeViewModel.overridePrice(
-                            // removed category parameter
-                            selectedProduct!!.barcode,
-                            idx,
-                            newVal
-                        )
+                        homeViewModel.overridePrice(selectedProduct!!.barcode, idx, newVal)
                         editingIndex = null
                     }
-                }) {
-                    Text("Save")
-                }
+                }) { Text("Save") }
             },
             dismissButton = {
-                TextButton(onClick = { editingIndex = null }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { editingIndex = null }) { Text("Cancel") }
             }
         )
     }

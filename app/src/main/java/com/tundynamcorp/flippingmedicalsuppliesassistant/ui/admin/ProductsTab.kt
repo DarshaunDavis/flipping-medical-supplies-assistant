@@ -4,18 +4,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
-import androidx.compose.material3.MenuAnchorType
+import com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductsTab(
-    homeViewModel: HomeViewModel = viewModel(),
+    homeViewModel: HomeViewModel,
     adminViewModel: AdminViewModel = viewModel()
 ) {
     // 1) Observe persisted maps
@@ -25,7 +27,6 @@ fun ProductsTab(
     val selectedBuyerMap   by homeViewModel.selectedBuyerMap.collectAsState(initial = emptyMap())
 
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
-
     // 3) Local UI state for which dropdown is open
     var expandedCategory by remember { mutableStateOf<String?>(null) }
 
@@ -110,7 +111,6 @@ fun ProductsTab(
                                     DropdownMenuItem(
                                         text = { Text(buyer) },
                                         onClick = {
-                                            // tell the VM which buyer is selected for this category
                                             homeViewModel.setSelectedBuyer(category, buyer)
                                             expandedCategory = null
                                         }

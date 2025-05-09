@@ -19,18 +19,15 @@ fun ProductsTab(
     adminViewModel: AdminViewModel = viewModel()
 ) {
     // 1) Observe persisted maps
-    val buyersByCategory by homeViewModel.buyersByCategory.collectAsState(initial = emptyMap())
-    val visibilityMap    by adminViewModel.visibility.collectAsState(initial = emptyMap())
+    val buyersByCategory   by homeViewModel.buyersByCategory.collectAsState(initial = emptyMap())
+    val visibilityMap      by adminViewModel.visibility.collectAsState(initial = emptyMap())
+    // 2) Observe the VM’s buyer‐selection state
+    val selectedBuyerMap   by homeViewModel.selectedBuyerMap.collectAsState(initial = emptyMap())
 
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
 
-    // 2) Local-only state for which dropdown is open & which buyer is selected
+    // 3) Local UI state for which dropdown is open
     var expandedCategory by remember { mutableStateOf<String?>(null) }
-    val selectedBuyerMap = remember {
-        mutableStateMapOf<String, String?>().apply {
-            categories.forEach { put(it, null) }
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -40,7 +37,6 @@ fun ProductsTab(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         categories.forEach { category ->
-            // Card per category
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -49,7 +45,7 @@ fun ProductsTab(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // --- Header + toggle ---
+                    // Header + toggle
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -62,7 +58,7 @@ fun ProductsTab(
                         )
                     }
 
-                    // --- Status text ---
+                    // Status text
                     Text(
                         text = if (visibilityMap[category] == true)
                             "Status: Displayed"
@@ -71,7 +67,7 @@ fun ProductsTab(
                         style = MaterialTheme.typography.bodySmall
                     )
 
-                    // --- Buyer dropdown ---
+                    // Buyer dropdown
                     ExposedDropdownMenuBox(
                         expanded = expandedCategory == category,
                         onExpandedChange = { expandedCategory = if (it) category else null }
@@ -114,7 +110,8 @@ fun ProductsTab(
                                     DropdownMenuItem(
                                         text = { Text(buyer) },
                                         onClick = {
-                                            selectedBuyerMap[category] = buyer
+                                            // tell the VM which buyer is selected for this category
+                                            homeViewModel.setSelectedBuyer(category, buyer)
                                             expandedCategory = null
                                         }
                                     )
@@ -123,7 +120,7 @@ fun ProductsTab(
                         }
                     }
 
-                    // --- Currently selected buyer ---
+                    // Currently selected buyer
                     Text(
                         text = "Using: ${selectedBuyerMap[category] ?: "—"}",
                         style = MaterialTheme.typography.bodySmall

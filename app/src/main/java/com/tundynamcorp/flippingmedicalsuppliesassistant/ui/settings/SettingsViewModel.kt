@@ -31,6 +31,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             )
         )
 
+    val selectedBuyersMap: StateFlow<Map<String,String?>> =
+        repo.selectedBuyersMapFlow
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
     /** Persist the profile into DataStore */
     fun updateProfile(new: SellerInfo) {
         viewModelScope.launch {

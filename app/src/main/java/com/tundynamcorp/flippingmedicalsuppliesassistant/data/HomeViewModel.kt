@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
+    private val settingsRepo = SettingsRepository(getApplication())
     private val repo         = HomeRepository()
     private val adminRepo    = AdminRepository(app)
     private val overrideRepo = PriceOverrideRepository(app)
@@ -19,13 +20,19 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val _query    = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
-    // ➊ Track which buyer is selected per category
-    private val _selectedBuyerMap = MutableStateFlow<Map<String, String?>>(emptyMap())
-    val selectedBuyerMap: StateFlow<Map<String, String?>> = _selectedBuyerMap.asStateFlow()
+    /** ➊ DataStore-backed map of your chosen buyer per category */
+    val selectedBuyerMap: StateFlow<Map<String, String?>> =
+        settingsRepo.selectedBuyersMapFlow
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyMap()
+            )
 
+    /** ➋ When user picks a buyer, write it out to DataStore */
     fun setSelectedBuyer(category: String, buyer: String?) {
-        _selectedBuyerMap.update { old ->
-            old.toMutableMap().apply { put(category, buyer) }
+        viewModelScope.launch {
+            settingsRepo.saveSelectedBuyer(category, buyer)
         }
     }
 

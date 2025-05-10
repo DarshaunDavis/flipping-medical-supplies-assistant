@@ -300,7 +300,7 @@ fun ProfileTab(
                         editing = false
                     },
                     enabled = listOf(name, address1, city, state, zip, phone)
-                        .all { it.isNotBlank() }
+                        .any { it.isNotBlank() }
                 ) {
                     Text("Save")
                 }

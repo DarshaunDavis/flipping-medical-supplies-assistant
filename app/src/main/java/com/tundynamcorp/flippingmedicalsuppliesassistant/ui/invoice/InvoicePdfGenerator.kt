@@ -19,7 +19,8 @@ object InvoicePdfGenerator {
         seller: SellerInfo,
         meta: InvoiceMeta,
         lines: List<InvoiceLine>,
-        invoiceDate: Date = Date()
+        invoiceDate: Date = Date(),
+        showLogo: Boolean = true // ✅ added parameter with default value
     ): File {
         // 1️⃣ Create PDF and page
         val pdf = PdfDocument()
@@ -36,7 +37,7 @@ object InvoicePdfGenerator {
         val lineP   = Paint().apply { color = Color.LTGRAY; strokeWidth = 1f }
         val stripeP = Paint().apply { color = "#F7F7F7".toColorInt() }
 
-        // 3️⃣ Seller block, start lower to give breathing room
+        // 3️⃣ Seller block
         val topMargin = 80f
         var y = topMargin
 
@@ -58,19 +59,20 @@ object InvoicePdfGenerator {
         c.drawText(seller.phone.formatPhone(), 40f, y, bodyP)
         y += bodyP.textSize + 8f
 
-        // 4️⃣ Determine invoice title position just below seller block
+        // 4️⃣ Position for invoice title
         val invoiceY = y + 16f
 
-        // 5️⃣ Draw logo using direct resource reference and scale extension
-        val bmp = BitmapFactory.decodeResource(context.resources, R.drawable.fmsalogo)
-        val scaledBmp = bmp.scale(200, 150)
-        val logoHeight = scaledBmp.height.toFloat()
-        val logoY = topMargin + ((invoiceY - topMargin) - logoHeight) / 2f
+        // 5️⃣ Draw logo if allowed
+        if (showLogo) {
+            val bmp = BitmapFactory.decodeResource(context.resources, R.drawable.fmsalogo)
+            val scaledBmp = bmp.scale(200, 150)
+            val logoHeight = scaledBmp.height.toFloat()
+            val logoY = topMargin + ((invoiceY - topMargin) - logoHeight) / 2f
 
-        // shift logo left so its right edge is 40pt from page edge
-        val rightMargin = 30f
-        val logoX = pageInfo.pageWidth - scaledBmp.width - rightMargin
-        c.drawBitmap(scaledBmp, logoX, logoY, null)
+            val rightMargin = 30f
+            val logoX = pageInfo.pageWidth - scaledBmp.width - rightMargin
+            c.drawBitmap(scaledBmp, logoX, logoY, null)
+        }
 
         // 6️⃣ Invoice title & date
         c.drawText("Invoice", 40f, invoiceY, titleP)
@@ -79,7 +81,7 @@ object InvoicePdfGenerator {
             40f, invoiceY + titleP.textSize + 4f, subP
         )
 
-        // 7️⃣ Client / Payable / Invoice # grid
+        // 7️⃣ Client + Payable + Invoice #
         val gridTop = invoiceY + titleP.textSize + subP.textSize + 24f
         val colX = listOf(40f, 220f, 400f)
         c.drawText("Invoice for", colX[0], gridTop, headerP)
@@ -170,3 +172,4 @@ object InvoicePdfGenerator {
         return outFile
     }
 }
+

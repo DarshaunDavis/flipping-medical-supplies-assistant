@@ -1,4 +1,3 @@
-// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/invoice/InvoiceStep3Screen.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
 import android.app.DatePickerDialog
@@ -29,7 +28,8 @@ fun InvoiceStep3Screen(
     existingLines: List<InvoiceLine>,
     onBack: () -> Unit,
     onAddLine: (InvoiceLine) -> Unit,
-    onDone: () -> Unit
+    onDone: (hideLogo: Boolean) -> Unit,
+    isSubscriber: Boolean
 ) {
     val context = LocalContext.current
     val repo = remember { HomeRepository() }
@@ -308,7 +308,7 @@ fun InvoiceStep3Screen(
                         val price = unitPrice!!
                         onAddLine(InvoiceLine(prod.description, expDate!!, price, quantity))
                     }
-                    onDone()
+                    onDone(!isSubscriber)
                 },
                 enabled = existingLines.isNotEmpty() ||
                         (selectedProd != null && unitPrice != null && selectedCondition != null)

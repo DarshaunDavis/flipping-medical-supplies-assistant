@@ -44,6 +44,7 @@ fun InvoiceScreen(
     val role              by authVm.role.collectAsState()
     val isTrialActive     by authVm.isTrialActive.collectAsState()
     val invoicesThisMonth by invoiceVm.countThisMonth.collectAsState()
+    val isSubscriber = role == UserRole.Subscriber || role == UserRole.Admin
 
     // — upgrade dialog
     var showUpgrade by remember { mutableStateOf(false) }
@@ -74,7 +75,8 @@ fun InvoiceScreen(
                     existingLines = lines,
                     onBack        = { step = 2 },
                     onAddLine     = { line -> lines = lines + line },
-                    onDone        = { step = 4 }
+                    onDone        = { step = 4 },
+                    isSubscriber  = isSubscriber
                 )
             }
 
@@ -204,7 +206,8 @@ fun InvoiceScreen(
                                         context = context,
                                         seller  = sellerInfo!!,
                                         meta    = invoiceMeta!!,
-                                        lines   = lines
+                                        lines   = lines,
+                                        showLogo = !isSubscriber
                                     )
                                     (context.getSystemService(Context.PRINT_SERVICE) as PrintManager)
                                         .print(

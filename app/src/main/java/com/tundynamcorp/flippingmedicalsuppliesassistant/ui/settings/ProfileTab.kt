@@ -241,10 +241,10 @@ fun ProfileTab(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // PHONE (digits only, max 9)
+            // PHONE (digits only, max 10)
             OutlinedTextField(
                 value = phone,
-                onValueChange = { phone = it.filter(Char::isDigit).take(9) },
+                onValueChange = { phone = it.filter(Char::isDigit).take(10) },
                 label = { Text("Phone") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -286,15 +286,15 @@ fun ProfileTab(
                     onClick = {
                         onSave(
                             SellerInfo(
-                                name     = name,
-                                dba      = dba.takeIf(String::isNotBlank),
-                                address1 = address1,
-                                address2 = address2.takeIf(String::isNotBlank),
-                                city     = city,
-                                state    = state,
-                                zip      = zip,
-                                phone    = phone,
-                                email    = email.takeIf(String::isNotBlank)
+                                name     = name.takeIf { it.isNotBlank() }     ?: profileInfo.name,
+                                dba      = dba.takeIf { it.isNotBlank() }       ?: profileInfo.dba,
+                                address1 = address1.takeIf { it.isNotBlank() }  ?: profileInfo.address1,
+                                address2 = address2.takeIf { it.isNotBlank() }  ?: profileInfo.address2,
+                                city     = city.takeIf { it.isNotBlank() }      ?: profileInfo.city,
+                                state    = state.takeIf { it.isNotBlank() }     ?: profileInfo.state,
+                                zip      = zip.takeIf { it.isNotBlank() }       ?: profileInfo.zip,
+                                phone    = phone.takeIf { it.isNotBlank() }     ?: profileInfo.phone,
+                                email    = email.takeIf { it.isNotBlank() }     ?: profileInfo.email
                             )
                         )
                         editing = false

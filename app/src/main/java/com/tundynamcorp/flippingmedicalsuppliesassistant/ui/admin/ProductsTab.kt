@@ -17,14 +17,14 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductsTab(
-    homeViewModel: HomeViewModel,
+    homeViewModel: HomeViewModel = viewModel(),
     adminViewModel: AdminViewModel = viewModel()
 ) {
     // 1) Observe persisted maps
-    val buyersByCategory   by homeViewModel.buyersByCategory.collectAsState(initial = emptyMap())
-    val visibilityMap      by adminViewModel.visibility.collectAsState(initial = emptyMap())
+    val buyersByCategory by homeViewModel.buyersByCategory.collectAsState(initial = emptyMap())
+    val visibilityMap    by adminViewModel.visibility.collectAsState(initial = emptyMap())
     // 2) Observe the VM’s buyer‐selection state
-    val selectedBuyerMap   by homeViewModel.selectedBuyerMap.collectAsState(initial = emptyMap())
+    val selectedBuyerMap by homeViewModel.selectedBuyerMap.collectAsState(initial = emptyMap())
 
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
     // 3) Local UI state for which dropdown is open
@@ -46,7 +46,7 @@ fun ProductsTab(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Header + toggle
+                    // ── Header + toggle ──
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -59,7 +59,7 @@ fun ProductsTab(
                         )
                     }
 
-                    // Status text
+                    // ── Status text ──
                     Text(
                         text = if (visibilityMap[category] == true)
                             "Status: Displayed"
@@ -68,7 +68,7 @@ fun ProductsTab(
                         style = MaterialTheme.typography.bodySmall
                     )
 
-                    // Buyer dropdown
+                    // ── Buyer dropdown ──
                     ExposedDropdownMenuBox(
                         expanded = expandedCategory == category,
                         onExpandedChange = { expandedCategory = if (it) category else null }
@@ -80,10 +80,8 @@ fun ProductsTab(
                             readOnly = true,
                             placeholder = {
                                 Text(
-                                    if (buyers.isEmpty())
-                                        "No buyer available"
-                                    else
-                                        "Select Buyer"
+                                    if (buyers.isEmpty()) "No buyer available"
+                                    else "Select Buyer"
                                 )
                             },
                             trailingIcon = {
@@ -120,7 +118,7 @@ fun ProductsTab(
                         }
                     }
 
-                    // Currently selected buyer
+                    // ── Currently selected buyer ──
                     Text(
                         text = "Using: ${selectedBuyerMap[category] ?: "—"}",
                         style = MaterialTheme.typography.bodySmall

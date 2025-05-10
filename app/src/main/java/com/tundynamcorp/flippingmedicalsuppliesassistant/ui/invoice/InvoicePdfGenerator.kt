@@ -69,10 +69,14 @@ object InvoicePdfGenerator {
 
         // 5️⃣ Draw logo using direct resource reference and scale extension
         val bmp = BitmapFactory.decodeResource(context.resources, R.drawable.fmsalogo)
-        val scaledBmp = bmp.scale(80, 80)
+        val scaledBmp = bmp.scale(200, 150)
         val logoHeight = scaledBmp.height.toFloat()
         val logoY = topMargin + ((invoiceY - topMargin) - logoHeight) / 2f
-        c.drawBitmap(scaledBmp, 495f, logoY, null)
+
+        // shift logo left so its right edge is 40pt from page edge
+        val rightMargin = 30f
+        val logoX = pageInfo.pageWidth - scaledBmp.width - rightMargin
+        c.drawBitmap(scaledBmp, logoX, logoY, null)
 
         // 6️⃣ Invoice title & date
         c.drawText("Invoice", 40f, invoiceY, titleP)

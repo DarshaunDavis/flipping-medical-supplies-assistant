@@ -23,7 +23,7 @@ fun ProductsTab(
     // 1) Observe persisted maps
     val buyersByCategory by homeViewModel.buyersByCategory.collectAsState(initial = emptyMap())
     val visibilityMap    by adminViewModel.visibility.collectAsState(initial = emptyMap())
-    // 2) Observe the VM’s buyer‐selection state
+    // 2) Observe the VM’s buyer-selection state
     val selectedBuyerMap by homeViewModel.selectedBuyerMap.collectAsState(initial = emptyMap())
 
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
@@ -38,6 +38,12 @@ fun ProductsTab(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         categories.forEach { category ->
+            // find all buyers for this category
+            val buyers = buyersByCategory[category].orEmpty()
+            val hasBuyers = buyers.isNotEmpty()
+            // find current toggle state
+            val visible = visibilityMap[category] ?: true
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -52,19 +58,17 @@ fun ProductsTab(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(category, style = MaterialTheme.typography.titleMedium)
-                        val visible = visibilityMap[category] ?: true
+                        // disable switch if no buyers exist
                         Switch(
                             checked = visible,
-                            onCheckedChange = { adminViewModel.setVisibility(category, it) }
+                            onCheckedChange = { adminViewModel.setVisibility(category, it) },
+                            enabled = hasBuyers
                         )
                     }
 
                     // ── Status text ──
                     Text(
-                        text = if (visibilityMap[category] == true)
-                            "Status: Displayed"
-                        else
-                            "Status: Hidden",
+                        text = if (visible) "Status: Displayed" else "Status: Hidden",
                         style = MaterialTheme.typography.bodySmall
                     )
 
@@ -73,14 +77,13 @@ fun ProductsTab(
                         expanded = expandedCategory == category,
                         onExpandedChange = { expandedCategory = if (it) category else null }
                     ) {
-                        val buyers = buyersByCategory[category].orEmpty()
                         TextField(
                             value = selectedBuyerMap[category].orEmpty(),
                             onValueChange = { /* read-only */ },
                             readOnly = true,
                             placeholder = {
                                 Text(
-                                    if (buyers.isEmpty()) "No buyer available"
+                                    if (!hasBuyers) "No buyer available"
                                     else "Select Buyer"
                                 )
                             },
@@ -98,7 +101,7 @@ fun ProductsTab(
                             expanded = expandedCategory == category,
                             onDismissRequest = { expandedCategory = null }
                         ) {
-                            if (buyers.isEmpty()) {
+                            if (!hasBuyers) {
                                 DropdownMenuItem(
                                     text = { Text("No buyer available") },
                                     onClick = { /* no-op */ },

@@ -36,12 +36,6 @@ object InvoicePdfGenerator {
         val lineP   = Paint().apply { color = Color.LTGRAY; strokeWidth = 1f }
         val stripeP = Paint().apply { color = "#F7F7F7".toColorInt() }
 
-        // Helper to format phone
-        fun formatPhone(raw: String): String {
-            val d = raw.filter(Char::isDigit)
-            return if (d.length == 10) "(${d.substring(0,3)}) ${d.substring(3,6)}-${d.substring(6)}" else raw
-        }
-
         // 3️⃣ Seller block, start lower to give breathing room
         val topMargin = 80f
         var y = topMargin
@@ -61,7 +55,7 @@ object InvoicePdfGenerator {
         c.drawText("${seller.city}, ${seller.state} ${seller.zip}", 40f, y, bodyP)
         y += bodyP.textSize + 4f
 
-        c.drawText(formatPhone(seller.phone), 40f, y, bodyP)
+        c.drawText(seller.phone.formatPhone(), 40f, y, bodyP)
         y += bodyP.textSize + 8f
 
         // 4️⃣ Determine invoice title position just below seller block

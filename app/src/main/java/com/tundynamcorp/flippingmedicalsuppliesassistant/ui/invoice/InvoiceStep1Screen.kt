@@ -250,10 +250,10 @@ fun InvoiceStep1Screen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // ── PHONE (digits only, max 9) ──
+            // ── PHONE (digits only, max 10) ──
             OutlinedTextField(
                 value = phone,
-                onValueChange = { phone = it.filter(Char::isDigit).take(9) },
+                onValueChange = { phone = it.filter(Char::isDigit).take(10) },
                 label = { Text("Phone") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(

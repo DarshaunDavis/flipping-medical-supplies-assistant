@@ -7,8 +7,11 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.FileNotFoundException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.*
 
 class HomeRepository {
     private val baseUrl = "https://test-strip-marketplace-default-rtdb.firebaseio.com"
@@ -92,29 +95,42 @@ class HomeRepository {
 
     /**
      * Fetches a product’s last‐updated date and the last 10 monthly prices.
+     * If either node is missing, we fall back to sensible defaults instead of crashing.
      */
     suspend fun getPriceHistory(category: String, barcode: String): PriceHistory =
         withContext(Dispatchers.IO) {
-            val cat  = category.replace(" ", "%20")
-            val code = barcode.replace(" ", "%20")
+            // URL-encode spaces
+            val catEnc  = category.replace(" ", "%20")
+            val codeEnc = barcode.replace(" ", "%20")
 
-            val luUrl = "$baseUrl/last%20updated/$cat.json"
-            val lastUpdated = (URL(luUrl).openConnection() as HttpURLConnection).run {
-                inputStream.bufferedReader().use { it.readText().trim('"') }
+            // 1️⃣ Try to fetch last‐updated; if missing, use today’s date
+            val lastUpdated = try {
+                val luUrl = "$baseUrl/last%20updated/$catEnc.json"
+                (URL(luUrl).openConnection() as HttpURLConnection).run {
+                    inputStream.bufferedReader().use { it.readText().trim('"') }
+                }
+            } catch (e: FileNotFoundException) {
+                // no “last updated” entry yet → default to today
+                SimpleDateFormat("M/d/yyyy", Locale.US).format(Date())
             }
 
-            val pricesUrl = "$baseUrl/barcodes/$cat/$code/Strip%20Flip.json"
-            val rawPrices = (URL(pricesUrl).openConnection() as HttpURLConnection).run {
-                inputStream.bufferedReader().use { it.readText().trim() }
-            }
-            val prices = if (rawPrices == "null" || rawPrices.isEmpty()) {
-                emptyList()
-            } else {
-                JSONObject(rawPrices).let { obj ->
-                    (1..10).mapNotNull { i ->
-                        obj.optString("price$i", "").toFloatOrNull()
+            // 2️⃣ Try to fetch the price map; if missing or empty, use an empty list
+            val prices = try {
+                val pricesUrl = "$baseUrl/barcodes/$catEnc/$codeEnc/Strip%20Flip.json"
+                val raw = (URL(pricesUrl).openConnection() as HttpURLConnection).run {
+                    inputStream.bufferedReader().use { it.readText().trim() }
+                }
+                if (raw == "null" || raw.isEmpty()) {
+                    emptyList()
+                } else {
+                    JSONObject(raw).let { obj ->
+                        (1..10).mapNotNull { i ->
+                            obj.optString("price$i", "").toFloatOrNull()
+                        }
                     }
                 }
+            } catch (e: FileNotFoundException) {
+                emptyList()
             }
 
             PriceHistory(

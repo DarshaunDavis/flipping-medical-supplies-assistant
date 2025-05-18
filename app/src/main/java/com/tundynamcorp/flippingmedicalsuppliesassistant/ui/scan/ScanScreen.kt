@@ -23,6 +23,10 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.flow.first
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.TextField
 import androidx.compose.material3.MenuAnchorType
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -211,52 +215,39 @@ fun ScanScreen() {
                     if (selectedDate != null && !selectedCondition.isNullOrBlank()) {
                         Button(onClick = {
                             // compute month diff
-                            val inputFmt = SimpleDateFormat("M/d/yyyy", Locale.US)
-                            val selDate = inputFmt.parse(selectedDate!!)
-                            val baseDate = SimpleDateFormat("M/d/yyyy", Locale.US)
-                                .parse(ph!!.lastUpdated)
-                            val selCal = Calendar.getInstance().apply { time = selDate!! }
-                            val baseCal = Calendar.getInstance().apply { time = baseDate!! }
-                            val yearDiff = selCal.get(Calendar.YEAR) - baseCal.get(Calendar.YEAR)
-                            val monDiff  = selCal.get(Calendar.MONTH) - baseCal.get(Calendar.MONTH)
-                            val diff     = yearDiff * 12 + monDiff
+                            val fmt = SimpleDateFormat("M/d/yyyy", Locale.US)
+                            val selDate = fmt.parse(selectedDate!!)!!
+                            val base = fmt.parse(ph!!.lastUpdated)!!
+                            val selCal = Calendar.getInstance().apply { time = selDate }
+                            val baseCal = Calendar.getInstance().apply { time = base }
+                            val diffMonths = (selCal.get(Calendar.YEAR) - baseCal.get(Calendar.YEAR)) * 12 +
+                                    (selCal.get(Calendar.MONTH) - baseCal.get(Calendar.MONTH))
 
-                            if (diff < 2) {
+                            if (diffMonths < 2) {
                                 reject = true
                             } else {
                                 // pick historical price index
-                                val idx = if (diff > 11) 0 else 11 - diff
+                                val idx = if (diffMonths > 11) 0 else (11 - diffMonths).coerceAtLeast(0)
                                 val basePrice = ph!!.prices[idx]
 
                                 // apply condition-based adjustment:
                                 val cat = prod.category.lowercase(Locale.US)
                                 val desc = prod.description
                                 resultPrice = when (selectedCondition) {
-                                    "Dinged" -> {
-                                        when {
-                                            cat == "test strips" ->
-                                                basePrice - 3f
-                                            cat == "devices" ->
-                                                if (desc.contains("Dexcom G6", true))
-                                                    basePrice - 15f
-                                                else basePrice - 5f
-                                            else -> basePrice
-                                        }
+                                    "Dinged"  -> when {
+                                        cat == "test strips"      -> basePrice - 3f
+                                        cat == "devices" && desc.contains("Dexcom G6", true) -> basePrice - 15f
+                                        cat == "devices"          -> basePrice - 5f
+                                        else                      -> basePrice
                                     }
-                                    "Damaged" -> {
-                                        if (cat == "test strips") {
-                                            // if within the first 4 months use month-5 price
-                                            if (idx in 0..3)
-                                                ph!!.prices.getOrElse(4) { basePrice }
-                                            else basePrice
-                                        } else if (cat == "devices") {
-                                            // same % reduction for any damage on devices
-                                            if (desc.contains("Dexcom G6", true))
-                                                basePrice - 15f
-                                            else basePrice - 5f
-                                        } else basePrice
+                                    "Damaged" -> when {
+                                        cat == "test strips" && idx in 0..3  -> ph!!.prices.getOrElse(4) { basePrice }
+                                        cat == "test strips"                 -> basePrice
+                                        cat == "devices" && desc.contains("Dexcom G6", true) -> basePrice - 15f
+                                        cat == "devices"                     -> basePrice - 5f
+                                        else                                 -> basePrice
                                     }
-                                    else -> basePrice // "New" or any other
+                                    else      -> basePrice // “New” or anything else
                                 }
                             }
                             datePickerVisible = false

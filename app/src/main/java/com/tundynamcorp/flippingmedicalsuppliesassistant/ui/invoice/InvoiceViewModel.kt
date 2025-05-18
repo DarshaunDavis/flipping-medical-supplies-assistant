@@ -17,37 +17,45 @@ class InvoiceViewModel : ViewModel() {
     private val db   = Firebase.database.reference.child("invoices")
     private val auth = FirebaseAuth.getInstance()
 
+    // Tracks how many invoices the current user has generated this month
     private val _countThisMonth = MutableStateFlow(0)
     val countThisMonth: StateFlow<Int> = _countThisMonth.asStateFlow()
 
     init {
-        // Launch in coroutine, then only act if the user is signed in
+        // On startup, fetch this month’s count from RTDB
         viewModelScope.launch {
             auth.currentUser?.uid?.let { uid ->
                 val monthKey = SimpleDateFormat("yyyyMM", Locale.US).format(Date())
                 db.child(uid)
                     .child(monthKey)
                     .get()
-                    .addOnSuccessListener { snapshot ->
-                        _countThisMonth.value = snapshot.childrenCount.toInt()
+                    .addOnSuccessListener { snap ->
+                        _countThisMonth.value = snap.childrenCount.toInt()
                     }
                     .addOnFailureListener {
-                        // optionally log the error
+                        // log or ignore
                     }
             }
         }
     }
 
+    /**
+     * Pushes a timestamp into /invoices/{uid}/{yyyyMM}/… and immediately bumps
+     * the in‐memory count so UI gating reacts without a restart.
+     */
     fun recordInvoice(onComplete: (() -> Unit)? = null) {
         val uid = auth.currentUser?.uid ?: return
         val monthKey = SimpleDateFormat("yyyyMM", Locale.US).format(Date())
-        // push a simple timestamp under /invoices/{uid}/{yyyyMM}
-        db.child(uid).child(monthKey).push()
+
+        db.child(uid)
+            .child(monthKey)
+            .push()
             .setValue(ServerValue.TIMESTAMP)
             .addOnSuccessListener {
-                // bump local flow immediately
+                // instantly reflect in-app
                 _countThisMonth.value += 1
                 onComplete?.invoke()
             }
-        }
+        // you may want to handle failure here too
+    }
 }

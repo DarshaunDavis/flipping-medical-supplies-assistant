@@ -28,6 +28,10 @@ fun InvoiceStep3Screen(
     existingLines: List<InvoiceLine>,
     onBack: () -> Unit,
     onAddLine: (InvoiceLine) -> Unit,
+    /**
+     * @param hideLogo if true, the calling screen should render without the
+     *                  header logo (e.g. for subscribers)
+     */
     onDone: (hideLogo: Boolean) -> Unit,
     isSubscriber: Boolean
 ) {
@@ -128,19 +132,19 @@ fun InvoiceStep3Screen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // --- Summary of added items ---
+        // --- Summary of already added items ---
         if (existingLines.isNotEmpty()) {
             Text(
                 text = "Items added: ${existingLines.size}    " +
                         "Total: $${existingLines.sumOf { it.lineTotal.toDouble() }.toInt()}",
                 style = MaterialTheme.typography.bodyLarge
             )
-            HorizontalDivider()
+            Divider()
         }
 
         Text("Step 3: Add Item", style = MaterialTheme.typography.titleLarge)
 
-        // Category dropdown
+        // ── Category dropdown ──
         ExposedDropdownMenuBox(
             expanded = catExpanded,
             onExpandedChange = { catExpanded = it }
@@ -154,7 +158,7 @@ fun InvoiceStep3Screen(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(catExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = catExpanded,
@@ -173,7 +177,7 @@ fun InvoiceStep3Screen(
             }
         }
 
-        // Product dropdown
+        // ── Product dropdown ──
         ExposedDropdownMenuBox(
             expanded = prodExpanded,
             onExpandedChange = { prodExpanded = it }
@@ -187,7 +191,7 @@ fun InvoiceStep3Screen(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(prodExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = prodExpanded,
@@ -205,7 +209,7 @@ fun InvoiceStep3Screen(
             }
         }
 
-        // Expiration date picker
+        // ── Expiration date picker ──
         Text("Expiration Date", style = MaterialTheme.typography.bodyMedium)
         Button(onClick = { datePickerVisible = true }) {
             Text(expDate ?: "Select Date")
@@ -221,7 +225,7 @@ fun InvoiceStep3Screen(
             )
         }
 
-        // Condition dropdown
+        // ── Condition dropdown ──
         selectedCondition?.let {
             Text("Product Condition", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(4.dp))
@@ -238,7 +242,7 @@ fun InvoiceStep3Screen(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(condExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = condExpanded,
@@ -256,7 +260,7 @@ fun InvoiceStep3Screen(
             }
         }
 
-        // Quantity field
+        // ── Quantity field ──
         OutlinedTextField(
             value = quantityStr,
             onValueChange = { quantityStr = it.filter(Char::isDigit) },
@@ -266,7 +270,7 @@ fun InvoiceStep3Screen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Price preview
+        // ── Price preview ──
         unitPrice?.let { price ->
             Text("Unit Price: $${price.toInt()}", style = MaterialTheme.typography.bodyLarge)
             Text(
@@ -277,7 +281,7 @@ fun InvoiceStep3Screen(
 
         Spacer(Modifier.height(24.dp))
 
-        // Action buttons
+        // ── Action buttons ──
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -290,7 +294,7 @@ fun InvoiceStep3Screen(
                     val prod = selectedProd!!
                     val price = unitPrice!!
                     onAddLine(InvoiceLine(prod.description, expDate!!, price, quantity))
-                    // reset fields
+                    // reset
                     selectedCat = null
                     selectedProd = null
                     expDate = null
@@ -308,6 +312,7 @@ fun InvoiceStep3Screen(
                         val price = unitPrice!!
                         onAddLine(InvoiceLine(prod.description, expDate!!, price, quantity))
                     }
+                    // subscribers skip the logo step
                     onDone(!isSubscriber)
                 },
                 enabled = existingLines.isNotEmpty() ||
@@ -319,7 +324,6 @@ fun InvoiceStep3Screen(
     }
 }
 
-/** Helper to show a native DatePickerDialog */
 @Composable
 private fun ShowDatePicker(
     context: Context,

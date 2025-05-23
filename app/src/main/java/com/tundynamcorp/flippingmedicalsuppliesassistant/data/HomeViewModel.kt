@@ -28,7 +28,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 initialValue = emptyMap()
             )
 
-    /** When user picks, immediately persist */
     fun setSelectedBuyer(category: String, buyer: String?) {
         viewModelScope.launch {
             settingsRepo.saveSelectedBuyer(category, buyer)
@@ -60,13 +59,17 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     ) { products, q, visMap, buyerMap, index ->
         products
             .filter { prod ->
-                val cat         = prod.category
-                val isVisible   = visMap[cat] ?: false
+                val cat       = prod.category
+                // If there’s no explicit toggle entry, default to “visible”
+                val isVisible = visMap[cat] ?: true
+
+                // If there’s no index info (or no buyer chosen), treat as “in bucket”
                 val chosenBuyer = buyerMap[cat]
-                // must have toggle on, a buyer selected, AND that barcode in their bucket
-                isVisible
-                        && chosenBuyer != null
-                        && (index[cat]?.get(chosenBuyer)?.contains(prod.barcode) == true)
+                val inBucket = chosenBuyer
+                    ?.let { b -> index[cat]?.get(b)?.contains(prod.barcode) == true }
+                    ?: true
+
+                isVisible && inBucket
             }
             .let { list ->
                 if (q.isBlank()) list

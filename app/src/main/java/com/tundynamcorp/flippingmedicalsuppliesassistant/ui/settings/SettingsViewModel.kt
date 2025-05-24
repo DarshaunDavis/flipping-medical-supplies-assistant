@@ -36,33 +36,43 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     val buyerList: StateFlow<List<BuyerInfo>> = _buyerList.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            Log.d("SettingsViewModel", "🔍 Fetching buyers from $baseUrl/buyers.json")
-            try {
-                val jsonText = withContext(Dispatchers.IO) {
-                    (URL("$baseUrl/buyers.json").openConnection() as HttpURLConnection).run {
-                        inputStream.bufferedReader().use { it.readText() }
-                    }
+        // initial load
+        viewModelScope.launch { loadBuyers() }
+    }
+
+    /** Public API to re-pull the buyers list on demand */
+    fun refreshBuyers() {
+        viewModelScope.launch { loadBuyers() }
+    }
+
+    /** actual fetch logic */
+    private suspend fun loadBuyers() {
+        Log.d("SettingsViewModel", "🔍 Fetching buyers from $baseUrl/buyers.json")
+        try {
+            val jsonText = withContext(Dispatchers.IO) {
+                (URL("$baseUrl/buyers.json").openConnection() as HttpURLConnection).run {
+                    inputStream.bufferedReader().use { it.readText() }
                 }
-                val root = JSONObject(jsonText)
-                val list = root.keys().asSequence().map { id ->
-                    root.getJSONObject(id).let { obj ->
-                        BuyerInfo(
-                            id       = id,
-                            name     = obj.optString("name", "<no-name>"),
-                            address1 = obj.optString("address", ""),
-                            address2 = obj.optString("suite", null.toString()).takeIf { it.isNotBlank() },
-                            city     = obj.optString("city", ""),
-                            state    = obj.optString("state", ""),
-                            zip      = obj.optString("zip", obj.optString("zipCode", ""))
-                        )
-                    }
-                }.toList()
-                _buyerList.value = list
-                Log.d("SettingsViewModel", "✅ Loaded ${list.size} buyers")
-            } catch (th: Throwable) {
-                Log.e("SettingsViewModel", "❌ Failed to fetch buyers", th)
             }
+            val root = JSONObject(jsonText)
+            val list = root.keys().asSequence().map { id ->
+                root.getJSONObject(id).let { obj ->
+                    BuyerInfo(
+                        id       = id,
+                        name     = obj.optString("name", "<no-name>"),
+                        address1 = obj.optString("address", ""),
+                        address2 = obj.optString("suite", null.toString())
+                            .takeIf { it.isNotBlank() },
+                        city     = obj.optString("city", ""),
+                        state    = obj.optString("state", ""),
+                        zip      = obj.optString("zip", obj.optString("zipCode", ""))
+                    )
+                }
+            }.toList()
+            _buyerList.value = list
+            Log.d("SettingsViewModel", "✅ Loaded ${list.size} buyers")
+        } catch (th: Throwable) {
+            Log.e("SettingsViewModel", "❌ Failed to fetch buyers", th)
         }
     }
 

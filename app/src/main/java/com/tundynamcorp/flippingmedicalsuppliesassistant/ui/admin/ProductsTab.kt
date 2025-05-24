@@ -13,21 +13,27 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.AdminViewModel
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
+import kotlinx.coroutines.flow.map
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductsTab(
     homeViewModel: HomeViewModel = viewModel(),
-    adminViewModel: AdminViewModel = viewModel()
+    adminViewModel: AdminViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel()
 ) {
-    // 1) Observe persisted maps
-    val buyersByCategory by homeViewModel.buyersByCategory.collectAsState(initial = emptyMap())
-    val visibilityMap    by adminViewModel.visibility.collectAsState(initial = emptyMap())
-    // 2) Observe the VM’s buyer-selection state
-    val selectedBuyerMap by homeViewModel.selectedBuyerMap.collectAsState(initial = emptyMap())
+    // 1) Raw maps from your view models
+    val buyersByCategory    by homeViewModel.buyersByCategory.collectAsState(initial = emptyMap())
+    val visibilityMap       by adminViewModel.visibility.collectAsState(initial = emptyMap())
+    val selectedBuyerMap    by homeViewModel.selectedBuyerMap.collectAsState(initial = emptyMap())
+
+    // 2) Our “master list” of valid buyer names from RTDB → SettingsViewModel
+    val validBuyerNames by settingsViewModel.buyerList
+        .map { it.map { bi -> bi.name } }
+        .collectAsState(initial = emptyList())
 
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
-    // 3) Local UI state for which dropdown is open
     var expandedCategory by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -38,11 +44,29 @@ fun ProductsTab(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         categories.forEach { category ->
-            // find all buyers for this category
-            val buyers = buyersByCategory[category].orEmpty()
-            val hasBuyers = buyers.isNotEmpty()
-            // find current toggle state
-            val visible = visibilityMap[category] ?: true
+            // 3️⃣ Raw “buyers” keys under this category
+            val rawBuyers = buyersByCategory[category].orEmpty()
+
+            // 4️⃣ Filter to only those in our RTDB /buyers list
+            val filteredBuyers = rawBuyers.filter { it in validBuyerNames }
+
+            // 5️⃣ For default‐always categories, only keep “Strip Flip” if it’s actually present
+            val defaultCats = setOf("Test Strips", "Devices")
+            val defaultBuyer = "Strip Flip"
+            val buyersForUi: List<String> = when {
+                category in defaultCats && filteredBuyers.contains(defaultBuyer) ->
+                    listOf("Select Buyer", defaultBuyer)
+                filteredBuyers.isNotEmpty() ->
+                    listOf("Select Buyer") + filteredBuyers
+                else ->
+                    emptyList()
+            }
+
+            // 6️⃣ Decide if we have any “real” buyers for this category
+            val hasBuyers = buyersForUi.isNotEmpty()
+
+            // 7️⃣ Current toggle state
+            val visible = visibilityMap[category] ?: false
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -58,7 +82,6 @@ fun ProductsTab(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(category, style = MaterialTheme.typography.titleMedium)
-                        // disable switch if no buyers exist
                         Switch(
                             checked = visible,
                             onCheckedChange = { adminViewModel.setVisibility(category, it) },
@@ -78,8 +101,10 @@ fun ProductsTab(
                         onExpandedChange = { expandedCategory = if (it) category else null }
                     ) {
                         TextField(
-                            value = selectedBuyerMap[category].orEmpty(),
-                            onValueChange = { /* read-only */ },
+                            value = selectedBuyerMap[category]
+                                ?.takeIf { it in buyersForUi }
+                                ?: "",
+                            onValueChange = {},
                             readOnly = true,
                             placeholder = {
                                 Text(
@@ -102,17 +127,18 @@ fun ProductsTab(
                             onDismissRequest = { expandedCategory = null }
                         ) {
                             if (!hasBuyers) {
+                                // Show one disabled item when there are no buyers
                                 DropdownMenuItem(
                                     text = { Text("No buyer available") },
                                     onClick = { /* no-op */ },
                                     enabled = false
                                 )
                             } else {
-                                buyers.forEach { buyer ->
+                                buyersForUi.forEach { buyerName ->
                                     DropdownMenuItem(
-                                        text = { Text(buyer) },
+                                        text = { Text(buyerName) },
                                         onClick = {
-                                            homeViewModel.setSelectedBuyer(category, buyer)
+                                            homeViewModel.setSelectedBuyer(category, buyerName)
                                             expandedCategory = null
                                         }
                                     )

@@ -1,3 +1,4 @@
+// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/data/HomeViewModel.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.data
 
 import android.app.Application
@@ -25,9 +26,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     fun setSelectedBuyer(category: String, buyer: String?) {
-        viewModelScope.launch {
-            settingsRepo.saveSelectedBuyer(category, buyer)
-        }
+        viewModelScope.launch { settingsRepo.saveSelectedBuyer(category, buyer) }
     }
 
     // ─── ➋ Index: category → ( buyer → [barcodes] ) ──────────────────────
@@ -51,14 +50,22 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     ) { products, q, visMap, selBuyerMap, index ->
         products
             .filter { prod ->
-                val cat       = prod.category
-                val isVisible = visMap[cat] ?: true
-                val buyer     = selBuyerMap[cat]
-                // show all if no buyer chosen, else only those in that buyer’s bucket
-                val inBucket = buyer?.let { b ->
-                    index[cat]?.get(b)?.contains(prod.barcode) == true
-                } ?: true
-                isVisible && inBucket
+                val cat = prod.category
+
+                // 1) must have at least one buyer for this category
+                val hasBuyers = index[cat]?.isNotEmpty() == true
+                if (!hasBuyers) return@filter false
+
+                // 2) must be visible per the toggle
+                val isVisible = visMap[cat] ?: false
+                if (!isVisible) return@filter false
+
+                // 3) must match the selected buyer’s bucket
+                val buyer = selBuyerMap[cat]
+                val inBucket = buyer
+                    ?.let { b -> index[cat]?.get(b)?.contains(prod.barcode) == true }
+                    ?: true
+                inBucket
             }
             .let { list ->
                 if (q.isBlank()) list

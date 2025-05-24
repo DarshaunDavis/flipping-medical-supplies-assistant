@@ -4,30 +4,28 @@ import android.app.DatePickerDialog
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.google.zxing.ResultPoint
 import com.journeyapps.barcodescanner.*
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeRepository
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.data.Product
+import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlinx.coroutines.flow.first
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.TextField
-import androidx.compose.material3.MenuAnchorType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,15 +46,15 @@ fun ScanScreen() {
     var selectedCondition by remember { mutableStateOf<String?>(null) }
     var condDropdownExpanded by remember { mutableStateOf(false) }
 
-    // submit/result state
+    // result state
     var submitted by remember { mutableStateOf(false) }
     var resultPrice by remember { mutableStateOf<Float?>(null) }
     var reject by remember { mutableStateOf(false) }
 
-    // camera view ref
+    // camera ref
     var barcodeView: DecoratedBarcodeView? by remember { mutableStateOf(null) }
 
-    // 1) Pause/resume camera with lifecycle
+    // lifecycle pause/resume
     DisposableEffect(lifecycleOwner) {
         val obs = object : DefaultLifecycleObserver {
             override fun onResume(owner: LifecycleOwner) {
@@ -70,7 +68,7 @@ fun ScanScreen() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
 
-    // 2) Handle scan results
+    // scan callback
     val callback = remember {
         object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult?) {
@@ -86,7 +84,7 @@ fun ScanScreen() {
         }
     }
 
-    // 3) Lookup product + kick off history load
+    // lookup + load history
     LaunchedEffect(scannedCode) {
         matchedProduct = null
         submitted = false
@@ -95,36 +93,76 @@ fun ScanScreen() {
         selectedDate = null
         selectedCondition = null
         if (scannedCode != null) {
-            val all = HomeRepository()
-                .getAllProducts()
-                .first()
+            val all = HomeRepository().getAllProducts().first()
             matchedProduct = all.firstOrNull { it.barcode == scannedCode }
-            matchedProduct?.let { prod ->
-                homeVm.loadPriceHistory(prod.category, prod.barcode)
-            }
+            matchedProduct?.let { homeVm.loadPriceHistory(it.category, it.barcode) }
         }
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (isScanning) {
-            AndroidView(
-                factory = { ctx ->
-                    DecoratedBarcodeView(ctx).apply {
-                        initializeFromIntent(Intent())
-                        decodeContinuous(callback)
-                        resume()
-                        barcodeView = this
+    // auto‐submit when date + condition + history ready
+    LaunchedEffect(selectedDate, selectedCondition, ph) {
+        if (!submitted && selectedDate != null && selectedCondition != null && ph != null && matchedProduct != null) {
+            val prod = matchedProduct!!
+            try {
+                val fmt = SimpleDateFormat("M/d/yyyy", Locale.US)
+                val sel = fmt.parse(selectedDate!!)!!
+                val base = fmt.parse(ph!!.lastUpdated)!!
+                val selCal = Calendar.getInstance().apply { time = sel }
+                val baseCal = Calendar.getInstance().apply { time = base }
+                val diffMonths = (selCal.get(Calendar.YEAR) - baseCal.get(Calendar.YEAR)) * 12 +
+                        (selCal.get(Calendar.MONTH) - baseCal.get(Calendar.MONTH))
+                if (diffMonths < 2) {
+                    reject = true
+                } else {
+                    val idx = (11 - diffMonths).coerceIn(0, 11)
+                    val basePrice = ph!!.prices.getOrNull(idx) ?: ph!!.prices.lastOrNull() ?: 0f
+                    resultPrice = when (selectedCondition) {
+                        "Dinged"  -> when {
+                            prod.category.equals("Test Strips", true) -> basePrice - 3f
+                            prod.category.equals("Devices", true) &&
+                                    prod.description.contains("Dexcom G6", true) -> basePrice - 15f
+                            prod.category.equals("Devices", true) -> basePrice - 5f
+                            else -> basePrice
+                        }
+                        "Damaged" -> when {
+                            prod.category.equals("Test Strips", true) && idx in 0..3 ->
+                                ph!!.prices.getOrElse(4) { basePrice }
+                            prod.category.equals("Devices", true) &&
+                                    prod.description.contains("Dexcom G6", true) -> basePrice - 15f
+                            prod.category.equals("Devices", true) -> basePrice - 5f
+                            else -> basePrice
+                        }
+                        else -> basePrice
                     }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
+                }
+            } catch (_: Exception) {
+                reject = true
+            }
+            submitted = true
+        }
+    }
+
+    // ───── UI ─────
+    if (isScanning) {
+        AndroidView(
+            factory = { ctx ->
+                DecoratedBarcodeView(ctx).apply {
+                    initializeFromIntent(Intent())
+                    decodeContinuous(callback)
+                    resume()
+                    barcodeView = this
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    } else {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Button(onClick = {
                 scannedCode = null
                 matchedProduct = null
@@ -136,23 +174,27 @@ fun ScanScreen() {
             Spacer(Modifier.height(24.dp))
 
             if (scannedCode != null && matchedProduct == null) {
-                Text(
-                    "We don’t accept that product.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text("We don’t accept that product.", style = MaterialTheme.typography.bodyMedium)
             }
 
             matchedProduct?.let { prod ->
-                Text(
-                    prod.description,
-                    style = MaterialTheme.typography.titleLarge
-                )
+                Text(prod.description, style = MaterialTheme.typography.titleLarge)
 
-                Spacer(Modifier.height(16.dp))
+                prod.imageUrl?.takeIf(String::isNotBlank)?.let { url ->
+                    Spacer(Modifier.height(12.dp))
+                    AsyncImage(
+                        model = url,
+                        contentDescription = prod.description,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
 
-                // --- Only show form BEFORE submit! ---
+                // only show form until auto‐submit
                 if (!submitted) {
-                    // Expiration Date Picker
+                    // Expiration Date
                     selectedDate?.let {
                         Text("Expiration Date:", style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(4.dp))
@@ -173,8 +215,8 @@ fun ScanScreen() {
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Condition Spinner
-                    selectedCondition?.takeIf { it.isNotBlank() }?.let {
+                    // Condition
+                    selectedCondition?.let {
                         Text("Product Condition:", style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(4.dp))
                     }
@@ -191,7 +233,7 @@ fun ScanScreen() {
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
                             expanded = condDropdownExpanded,
@@ -208,70 +250,17 @@ fun ScanScreen() {
                             }
                         }
                     }
-
-                    Spacer(Modifier.height(24.dp))
-
-                    // Submit button
-                    if (selectedDate != null && !selectedCondition.isNullOrBlank()) {
-                        Button(onClick = {
-                            // compute month diff
-                            val fmt = SimpleDateFormat("M/d/yyyy", Locale.US)
-                            val selDate = fmt.parse(selectedDate!!)!!
-                            val base = fmt.parse(ph!!.lastUpdated)!!
-                            val selCal = Calendar.getInstance().apply { time = selDate }
-                            val baseCal = Calendar.getInstance().apply { time = base }
-                            val diffMonths = (selCal.get(Calendar.YEAR) - baseCal.get(Calendar.YEAR)) * 12 +
-                                    (selCal.get(Calendar.MONTH) - baseCal.get(Calendar.MONTH))
-
-                            if (diffMonths < 2) {
-                                reject = true
-                            } else {
-                                // pick historical price index
-                                val idx = if (diffMonths > 11) 0 else (11 - diffMonths).coerceAtLeast(0)
-                                val basePrice = ph!!.prices[idx]
-
-                                // apply condition-based adjustment:
-                                val cat = prod.category.lowercase(Locale.US)
-                                val desc = prod.description
-                                resultPrice = when (selectedCondition) {
-                                    "Dinged"  -> when {
-                                        cat == "test strips"      -> basePrice - 3f
-                                        cat == "devices" && desc.contains("Dexcom G6", true) -> basePrice - 15f
-                                        cat == "devices"          -> basePrice - 5f
-                                        else                      -> basePrice
-                                    }
-                                    "Damaged" -> when {
-                                        cat == "test strips" && idx in 0..3  -> ph!!.prices.getOrElse(4) { basePrice }
-                                        cat == "test strips"                 -> basePrice
-                                        cat == "devices" && desc.contains("Dexcom G6", true) -> basePrice - 15f
-                                        cat == "devices"                     -> basePrice - 5f
-                                        else                                 -> basePrice
-                                    }
-                                    else      -> basePrice // “New” or anything else
-                                }
-                            }
-                            datePickerVisible = false
-                            condDropdownExpanded = false
-                            submitted = true
-                        }) {
-                            Text("Submit")
-                        }
-                    }
                 }
 
-                // --- After submit: show result or rejection ---
+                // after auto‐submit: show result
                 if (submitted) {
                     Spacer(Modifier.height(24.dp))
                     if (reject) {
-                        Text(
-                            "We cannot accept that product.",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Text("We cannot accept that product.", style = MaterialTheme.typography.bodyMedium)
                     } else {
                         Text(
-                            text = "$${resultPrice?.toInt()}",
-                            style = MaterialTheme.typography.displayLarge,
-                            modifier = Modifier.padding(vertical = 12.dp)
+                            "$${resultPrice?.toInt()}",
+                            style = MaterialTheme.typography.displayLarge
                         )
                         Spacer(Modifier.height(16.dp))
                         Text("Expiration Date: $selectedDate")

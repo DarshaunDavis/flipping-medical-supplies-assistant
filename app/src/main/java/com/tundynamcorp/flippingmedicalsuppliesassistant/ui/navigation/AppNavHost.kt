@@ -178,6 +178,7 @@ fun AppNavHost() {
                             ?.let { prod ->
                                 PriceHistoryDialog(
                                     title       = prod.description,
+                                    imageUrl    = prod.imageUrl,
                                     lastUpdated = ph!!.lastUpdated,
                                     prices      = ph!!.prices,
                                     onDismiss   = {

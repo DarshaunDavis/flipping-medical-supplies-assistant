@@ -46,6 +46,7 @@ fun PricesTab(
     if (selectedProduct != null && ph != null) {
         PriceHistoryDialog(
             title       = selectedProduct!!.description,
+            imageUrl    = selectedProduct!!.imageUrl,
             lastUpdated = ph!!.lastUpdated,
             prices      = ph!!.prices,
             editable    = true,

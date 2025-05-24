@@ -1,5 +1,6 @@
 [versions]
-agp = "8.9.2"
+agp = "8.10.0"
+coilCompose = "2.4.0"
 core = "3.4.1"
 kotlin = "2.0.21"
 coreKtx = "1.16.0"
@@ -26,6 +27,7 @@ playServicesAds = "24.2.0"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 core = { module = "com.google.zxing:core", version.ref = "core" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

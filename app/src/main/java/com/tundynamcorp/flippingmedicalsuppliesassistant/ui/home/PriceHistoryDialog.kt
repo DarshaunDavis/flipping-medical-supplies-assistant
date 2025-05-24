@@ -6,8 +6,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -21,6 +23,7 @@ import java.util.*
 @Composable
 fun PriceHistoryDialog(
     title: String,
+    imageUrl: String? = null,
     lastUpdated: String,    // e.g. "10/22/2024"
     prices: List<Float>,    // exactly 10 values: price1 (highest) … price10 (lowest)
     editable: Boolean = false,
@@ -49,7 +52,19 @@ fun PriceHistoryDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                // ◆ show image if available
+                imageUrl?.let { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = title,
+                        modifier = Modifier
+                            .size(120.dp)
+                            .padding(bottom = 12.dp)
+                    )
+                }
+
                 // top row of labels (0..4)
                 Row(
                     modifier = Modifier.fillMaxWidth(),

@@ -81,7 +81,8 @@ class HomeRepository {
                 val desc = prodObj.optString("description", "")
                 val category = prodObj.optString("category", "")
                 if (desc.isNotBlank() && category.isNotBlank()) {
-                    list += Product(barcode, desc, category)
+                    val imageUrl = prodObj.optString("imageUrl", null.toString())
+                    list += Product(barcode, desc, category, imageUrl)
                 }
             }
 

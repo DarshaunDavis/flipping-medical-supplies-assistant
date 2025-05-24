@@ -14,11 +14,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class InvoiceViewModel : ViewModel() {
-    // 🚩 use the test RTDB URL here too
-    private val db = Firebase
-        .database("https://test-strip-marketplace-default-rtdb.firebaseio.com")
-        .reference
-        .child("invoices")
+    private val db   = Firebase.database.reference.child("invoices")
     private val auth = FirebaseAuth.getInstance()
 
     // Tracks how many invoices the current user has generated this month

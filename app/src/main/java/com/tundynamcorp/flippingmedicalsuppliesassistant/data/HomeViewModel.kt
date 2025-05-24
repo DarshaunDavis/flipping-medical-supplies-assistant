@@ -19,14 +19,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val _query    = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
-    // ─── ➊ Selected-buyer map (backed by DataStore) ───────────────────────
+    // ─── ➊ Selected‐buyer map (backed by DataStore) ───────────────────────
     val selectedBuyerMap: StateFlow<Map<String, String?>> =
         settingsRepo.selectedBuyersMapFlow
-            .stateIn(
-                scope   = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = emptyMap()
-            )
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     fun setSelectedBuyer(category: String, buyer: String?) {
         viewModelScope.launch {
@@ -34,64 +30,56 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ─── ➋ Load the JSON index: category → ( buyer → list of barcodes ) ──
+    // ─── ➋ Index: category → ( buyer → [barcodes] ) ──────────────────────
     private val barcodesByCategoryAndBuyer: StateFlow<Map<String, Map<String, List<String>>>> =
         repo.getBarcodesByCategoryAndBuyer()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    // ─── ➌ Flatten index into a simple buyer list per category ───────────
+    // ─── ➌ Flatten to simple buyer lists for the spinner ────────────────
     val buyersByCategory: StateFlow<Map<String, List<String>>> =
         barcodesByCategoryAndBuyer
-            .map { index ->
-                index.mapValues { (_, buyerMap) ->
-                    buyerMap.keys.sorted()
-                }
-            }
+            .map { idx -> idx.mapValues { it.value.keys.sorted() } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    // ─── ➍ Combined + filtered products ──────────────────────────────────
+    // ─── ➍ Combined + filtered products ─────────────────────────────────
     val filteredProducts: StateFlow<List<Product>> = combine(
         _products,
         _query,
         adminRepo.visibilityFlow,
         selectedBuyerMap,
         barcodesByCategoryAndBuyer
-    ) { products, q, visMap, buyerMap, index ->
+    ) { products, q, visMap, selBuyerMap, index ->
         products
             .filter { prod ->
                 val cat       = prod.category
-                // If there’s no explicit toggle entry, default to “visible”
                 val isVisible = visMap[cat] ?: true
-
-                // If there’s no index info (or no buyer chosen), treat as “in bucket”
-                val chosenBuyer = buyerMap[cat]
-                val inBucket = chosenBuyer
-                    ?.let { b -> index[cat]?.get(b)?.contains(prod.barcode) == true }
-                    ?: true
-
+                val buyer     = selBuyerMap[cat]
+                // show all if no buyer chosen, else only those in that buyer’s bucket
+                val inBucket = buyer?.let { b ->
+                    index[cat]?.get(b)?.contains(prod.barcode) == true
+                } ?: true
                 isVisible && inBucket
             }
             .let { list ->
                 if (q.isBlank()) list
                 else list.filter { it.description.startsWith(q, ignoreCase = true) }
             }
-    }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
-        // 1) Fetch full product list
+        // 1) Fetch flat product list
         viewModelScope.launch {
             repo.getAllProducts()
                 .catch { /* log or handle */ }
                 .collect { _products.value = it }
         }
 
-        // 2) On first launch, if no buyer chosen for Test Strips & Devices → “Strip Flip”
+        // 2) Default buyer for key categories on first run
         viewModelScope.launch {
-            selectedBuyerMap.first().also { map ->
-                listOf("Test Strips", "Devices").forEach { category ->
-                    if (map[category].isNullOrBlank()) {
-                        setSelectedBuyer(category, "Strip Flip")
+            selectedBuyerMap.first().also { m ->
+                listOf("Test Strips", "Devices").forEach { cat ->
+                    if (m[cat].isNullOrBlank()) {
+                        setSelectedBuyer(cat, "Strip Flip")
                     }
                 }
             }
@@ -103,13 +91,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         _query.value = new
     }
 
-    // ─── Price-history plumbing (unchanged) ──────────────────────────────
+    // ─── Price‐history plumbing ──────────────────────────────────────────
     private val _priceHistory = MutableStateFlow<PriceHistory?>(null)
     val priceHistory: StateFlow<PriceHistory?> = _priceHistory.asStateFlow()
 
     fun loadPriceHistory(category: String, barcode: String) {
         viewModelScope.launch {
-            val raw            = repo.getPriceHistory(category, barcode)
+            // ▶ pull the *selected* buyer for this category
+            val buyer = selectedBuyerMap.value[category] ?: return@launch
+            val raw   = repo.getPriceHistory(category, barcode, buyer)
             val overridesForBar = overrideRepo.overridesFlow.first()[barcode] ?: emptyMap()
             val marginPct      = adminRepo.marginsFlow.first()[category] ?: 0.0
 

@@ -1,3 +1,4 @@
+// app/src/main/java/com/tundynamcorp/flippingmedicalsuppliesassistant/ui/invoice/InvoiceStep2Screen.kt
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.invoice
 
 import androidx.compose.foundation.layout.*
@@ -20,9 +21,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.R
-import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.settings.SettingsViewModel
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,8 +30,7 @@ fun InvoiceStep2Screen(
     initial: InvoiceMeta? = null,
     sellerInfo: SellerInfo,
     onBack: () -> Unit,
-    onNext: (InvoiceMeta) -> Unit,
-    settingsViewModel: SettingsViewModel = viewModel()
+    onNext: (InvoiceMeta) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
     val locale = Locale.getDefault()
@@ -41,35 +39,53 @@ fun InvoiceStep2Screen(
             word.lowercase(locale).replaceFirstChar { it.uppercase(locale) }
         }
 
-    // 1) Pull live buyer list from RTDB
-    val buyers by settingsViewModel.buyerList.collectAsState()
-    val buyerOptions = remember(buyers) {
-        listOf("Select Existing Buyer") + buyers.map { it.name }
+    // — load & parse our buyer list from strings.xml
+    val rawBuyers = stringArrayResource(R.array.buyer_list).toList()
+    data class BuyerInfo(
+        val name: String,
+        val address1: String,
+        val address2: String?,
+        val city: String,
+        val state: String,
+        val zip: String
+    )
+    val buyers = rawBuyers.map { item ->
+        val parts = item.split("|")
+        BuyerInfo(
+            name     = parts.getOrNull(0).orEmpty(),
+            address1 = parts.getOrNull(1).orEmpty(),
+            address2 = parts.getOrNull(2)?.takeIf { it.isNotBlank() },
+            city     = parts.getOrNull(3).orEmpty(),
+            state    = parts.getOrNull(4).orEmpty(),
+            zip      = parts.getOrNull(5).orEmpty()
+        )
     }
-    var buyerExpanded by rememberSaveable { mutableStateOf(false) }
-    var selectedBuyer by rememberSaveable { mutableStateOf(buyerOptions[0]) }
 
-    // 2) Form fields
-    var clientName     by rememberSaveable { mutableStateOf(initial?.clientName ?: "") }
-    var clientAddress1 by rememberSaveable { mutableStateOf(initial?.clientAddress1 ?: "") }
-    var clientAddress2 by rememberSaveable { mutableStateOf(initial?.clientAddress2.orEmpty()) }
-    var clientCity     by rememberSaveable { mutableStateOf(initial?.clientCity ?: "") }
-    var clientState    by rememberSaveable { mutableStateOf(initial?.clientState ?: "") }
-    var clientZip      by rememberSaveable { mutableStateOf(initial?.clientZip ?: "") }
-    var invoiceNum     by rememberSaveable { mutableStateOf(initial?.invoiceNumber.orEmpty()) }
+    // Spinner options: only “Select Existing Buyer” + names
+    val buyerOptions = listOf("Select Existing Buyer") +
+            buyers.map { it.name }
 
-    // Payment details
-    val payableTo = remember(sellerInfo) { sellerInfo.dba ?: sellerInfo.name }
-    // Pull states from arrays.xml
+    var buyerExpanded      by rememberSaveable { mutableStateOf(false) }
+    var selectedBuyer      by rememberSaveable { mutableStateOf(buyerOptions[0]) }
+
+    // form fields
+    var clientName         by rememberSaveable { mutableStateOf(initial?.clientName ?: "") }
+    var clientAddress1     by rememberSaveable { mutableStateOf(initial?.clientAddress1 ?: "") }
+    var clientAddress2     by rememberSaveable { mutableStateOf(initial?.clientAddress2.orEmpty()) }
+    var clientCity         by rememberSaveable { mutableStateOf(initial?.clientCity ?: "") }
+    var clientState        by rememberSaveable { mutableStateOf(initial?.clientState ?: "") }
+    var clientZip          by rememberSaveable { mutableStateOf(initial?.clientZip ?: "") }
+    var invoiceNum         by rememberSaveable { mutableStateOf(initial?.invoiceNumber.orEmpty()) }
+
+    val payableTo  = remember(sellerInfo) { sellerInfo.dba ?: sellerInfo.name }
     val statesList = stringArrayResource(id = R.array.states).toList()
 
     // FocusRequesters
     val stateRequester      = remember { FocusRequester() }
     val invoiceNumRequester = remember { FocusRequester() }
-    val scrollState         = rememberScrollState()
 
-    // State dropdown control
-    var stateDropdownExpanded by rememberSaveable { mutableStateOf(false) }
+    var stateDropdownExpanded by remember { mutableStateOf(false) }
+    val scrollState            = rememberScrollState()
 
     Column(
         Modifier
@@ -94,29 +110,29 @@ fun InvoiceStep2Screen(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(buyerExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = buyerExpanded,
                 onDismissRequest = { buyerExpanded = false }
             ) {
-                buyerOptions.forEachIndexed { index, option ->
+                buyerOptions.forEach { opt ->
                     DropdownMenuItem(
-                        text = { Text(option) },
+                        text = { Text(opt) },
                         onClick = {
-                            selectedBuyer = option
+                            selectedBuyer = opt
                             buyerExpanded = false
-                            if (index == 0) {
-                                // Manual entry
-                                clientName = ""
+                            if (opt == buyerOptions[0]) {
+                                // clear for manual entry
+                                clientName     = ""
                                 clientAddress1 = ""
                                 clientAddress2 = ""
-                                clientCity = ""
-                                clientState = ""
-                                clientZip = ""
+                                clientCity     = ""
+                                clientState    = ""
+                                clientZip      = ""
                             } else {
-                                // Populate from RTDB
-                                val info = buyers[index - 1]
+                                // populate from buyers list
+                                val info = buyers.first { it.name == opt }
                                 clientName     = info.name
                                 clientAddress1 = info.address1
                                 clientAddress2 = info.address2.orEmpty()
@@ -194,7 +210,10 @@ fun InvoiceStep2Screen(
                 imeAction = ImeAction.Next
             ),
             keyboardActions = KeyboardActions(
-                onNext = { stateDropdownExpanded = true }
+                onNext = {
+                    stateDropdownExpanded = true
+                    stateRequester.requestFocus()
+                }
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -208,12 +227,13 @@ fun InvoiceStep2Screen(
                 value = clientState.ifBlank { "Select State" },
                 onValueChange = {},
                 readOnly = true,
+                singleLine = true,
                 label = { Text("State") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(stateDropdownExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(stateRequester)
-                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = stateDropdownExpanded,
@@ -235,7 +255,7 @@ fun InvoiceStep2Screen(
         // ── Zip Code ──
         OutlinedTextField(
             value = clientZip,
-            onValueChange = { clientZip = it.filter(Char::isDigit).take(5) },
+            onValueChange = { clientZip = it.filter(Char::isDigit) },
             label = { Text("Zip Code") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(

@@ -4,7 +4,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.FileNotFoundException
@@ -17,22 +16,21 @@ class HomeRepository {
     private val baseUrl = "https://test-strip-marketplace-default-rtdb.firebaseio.com"
 
     /**
-     * Emits a map: category → ( "all" → list of all barcodes in that category )
+     * Emits a map: category → ( buyer → list of barcodes )
      *
-     * We no longer have per‐buyer data under each barcode, so we jam
-     * everything into a single buyer key "all" to avoid crashes.
+     * NEW SCHEMA: all products now under /products.json, each with a
+     * `prices` child whose keys are buyer names.
      */
     fun getBarcodesByCategoryAndBuyer(): Flow<Map<String, Map<String, List<String>>>> =
         callbackFlow {
             try {
-                // 1️⃣ Fetch the flat products node
+                // ▶ fetch /products.json instead of /barcodes.json
                 val text = withContext(Dispatchers.IO) {
                     (URL("$baseUrl/products.json").openConnection() as HttpURLConnection).run {
                         inputStream.bufferedReader().use { it.readText() }
                     }
                 }
 
-                // 2️⃣ Parse into category → ( "all" → [ barcodes... ] )
                 val root = JSONObject(text)
                 val result = mutableMapOf<String, MutableMap<String, MutableList<String>>>()
 
@@ -41,13 +39,20 @@ class HomeRepository {
                     val category = prodObj.optString("category", "")
                     if (category.isNotBlank()) {
                         val buyerMap = result.getOrPut(category) { mutableMapOf() }
-                        buyerMap.getOrPut("all") { mutableListOf() }.add(barcode)
+                        // iterate over each buyer under this product’s `prices` child
+                        prodObj.optJSONObject("prices")
+                            ?.keys()
+                            ?.forEach { buyer ->
+                                buyerMap
+                                    .getOrPut(buyer) { mutableListOf() }
+                                    .add(barcode)
+                            }
                     }
                 }
 
-                // 3️⃣ Freeze into immutable structures
-                val immutable = result.mapValues { (_, buyerMap) ->
-                    buyerMap.mapValues { it.value.toList() }
+                // freeze to immutable
+                val immutable = result.mapValues { (_, buyers) ->
+                    buyers.mapValues { it.value.toList() }
                 }
 
                 trySend(immutable)
@@ -58,33 +63,22 @@ class HomeRepository {
         }
 
     /**
-     * Emits a map: category → list of buyer-keys for that category.
-     * (Right now every category only has the single buyer key "all".)
-     */
-    fun getBuyersByCategory(): Flow<Map<String, List<String>>> =
-        getBarcodesByCategoryAndBuyer()
-            .map { bcMap ->
-                bcMap.mapValues { it.value.keys.sorted() }
-            }
-
-    /**
-     * Emits a flat list of all Products across categories, once, sorted by description
+     * Emits a flat list of all Products across categories, once, sorted by description.
+     * Now pulls from /products.json.
      */
     fun getAllProducts(): Flow<List<Product>> = callbackFlow {
         try {
-            // 1️⃣ Fetch the same /products.json
             val text = withContext(Dispatchers.IO) {
                 (URL("$baseUrl/products.json").openConnection() as HttpURLConnection).run {
                     inputStream.bufferedReader().use { it.readText() }
                 }
             }
 
-            // 2️⃣ Parse into a List<Product>
             val root = JSONObject(text)
             val list = mutableListOf<Product>()
             root.keys().forEach { barcode ->
-                val prodObj  = root.getJSONObject(barcode)
-                val desc     = prodObj.optString("description", "")
+                val prodObj = root.getJSONObject(barcode)
+                val desc = prodObj.optString("description", "")
                 val category = prodObj.optString("category", "")
                 if (desc.isNotBlank() && category.isNotBlank()) {
                     list += Product(barcode, desc, category)
@@ -100,44 +94,48 @@ class HomeRepository {
     }
 
     /**
-     * Fetches a product’s last‐updated date and the last 10 monthly prices.
-     * (Left as‐is; if you later move your price history node under /products,
-     * you’ll need to update these URLs too.)
+     * Fetches a product’s last‐updated date and the last 10 monthly prices for a *specific* buyer.
+     * Now reads from /products/{barcode}/prices/{buyer}.json.
      */
-    suspend fun getPriceHistory(category: String, barcode: String): PriceHistory =
-        withContext(Dispatchers.IO) {
-            // URL-encode spaces
-            val catEnc  = category.replace(" ", "%20")
-            val codeEnc = barcode.replace(" ", "%20")
+    suspend fun getPriceHistory(
+        category: String,
+        barcode: String,
+        buyer: String
+    ): PriceHistory = withContext(Dispatchers.IO) {
+        val catEnc   = category.replace(" ", "%20")
+        val codeEnc  = barcode.replace(" ", "%20")
+        val buyerEnc = buyer.replace(" ", "%20")
 
-            // 1️⃣ last‐updated
-            val lastUpdated = try {
-                val luUrl = "$baseUrl/last%20updated/$catEnc.json"
-                (URL(luUrl).openConnection() as HttpURLConnection).run {
-                    inputStream.bufferedReader().use { it.readText().trim('"') }
-                }
-            } catch (e: FileNotFoundException) {
-                SimpleDateFormat("M/d/yyyy", Locale.US).format(Date())
+        // 1️⃣ last‐updated unchanged
+        val lastUpdated = try {
+            val luUrl = "$baseUrl/last%20updated/$catEnc.json"
+            (URL(luUrl).openConnection() as HttpURLConnection).run {
+                inputStream.bufferedReader().use { it.readText().trim('"') }
             }
-
-            // 2️⃣ price array
-            val prices = try {
-                val pricesUrl = "$baseUrl/barcodes/$catEnc/$codeEnc/Strip%20Flip.json"
-                val raw = (URL(pricesUrl).openConnection() as HttpURLConnection).run {
-                    inputStream.bufferedReader().use { it.readText().trim() }
-                }
-                if (raw == "null" || raw.isEmpty()) emptyList()
-                else JSONObject(raw).let { obj ->
-                    (1..10).mapNotNull { i -> obj.optString("price$i", "").toFloatOrNull() }
-                }
-            } catch (e: FileNotFoundException) {
-                emptyList()
-            }
-
-            PriceHistory(
-                description = "",
-                lastUpdated = lastUpdated,
-                prices      = prices
-            )
+        } catch (_: FileNotFoundException) {
+            SimpleDateFormat("M/d/yyyy", Locale.US).format(Date())
         }
+
+        // 2️⃣ fetch that buyer’s 10‐month price map
+        val prices = try {
+            val pu = "$baseUrl/products/$codeEnc/prices/$buyerEnc.json"
+            val raw = (URL(pu).openConnection() as HttpURLConnection).run {
+                inputStream.bufferedReader().use { it.readText().trim() }
+            }
+            if (raw == "null" || raw.isEmpty()) emptyList()
+            else JSONObject(raw).let { obj ->
+                (1..10).mapNotNull { i ->
+                    obj.optString("price$i", "").toFloatOrNull()
+                }
+            }
+        } catch (_: FileNotFoundException) {
+            emptyList()
+        }
+
+        PriceHistory(
+            description = "",
+            lastUpdated = lastUpdated,
+            prices      = prices
+        )
+    }
 }

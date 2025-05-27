@@ -81,10 +81,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 .collect { _products.value = it }
         }
 
-        // 2) Default buyer for key categories on first run
+        // 2) Default buyer for key categories on first run (use raw DataStore flow, not the StateFlow’s placeholder)
         viewModelScope.launch {
-            selectedBuyerMap.first().also { m ->
-                listOf("Test Strips", "Devices").forEach { cat ->
+            settingsRepo.selectedBuyersMapFlow
+                .first()
+                .also { m ->
+                    listOf("Test Strips", "Devices").forEach { cat ->
                     if (m[cat].isNullOrBlank()) {
                         setSelectedBuyer(cat, "Strip Flip")
                     }

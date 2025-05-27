@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -28,9 +29,9 @@ fun ProductsTab(
     val visibilityMap    by adminViewModel.visibility.collectAsState(initial = emptyMap())
     val selectedBuyerMap by homeViewModel.selectedBuyerMap.collectAsState(initial = emptyMap())
 
-    // 2) Live list of buyer names from RTDB
+    // 2) Flat list of all valid buyer names
     val validBuyerNames by settingsViewModel.buyerList
-        .map { it.map { bi -> bi.name } }
+        .map { list -> list.map { it.name } }
         .collectAsState(initial = emptyList())
 
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
@@ -49,32 +50,25 @@ fun ProductsTab(
             // 4️⃣ Keep only those that exist in /buyers.json
             val filteredBuyers = rawBuyers.filter { it in validBuyerNames }
 
-            // 5️⃣ Default‐always categories get only “Strip Flip” if present
-            val defaultCats = setOf("Test Strips", "Devices")
-            val defaultBuyer = "Strip Flip"
-            val buyersForUi: List<String> = when {
-                category in defaultCats && filteredBuyers.contains(defaultBuyer) ->
-                    listOf("Select Buyer", defaultBuyer)
-                filteredBuyers.isNotEmpty() ->
-                    listOf("Select Buyer") + filteredBuyers
-                else ->
-                    emptyList()
-            }
+            // 5️⃣ Sort and display all buyers for this category
+            val buyersForUi = filteredBuyers.sorted()
 
             val hasBuyers = buyersForUi.isNotEmpty()
             val visible   = visibilityMap[category] ?: false
 
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier  = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // ── Header + toggle ──
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(category, style = MaterialTheme.typography.titleMedium)
@@ -94,45 +88,39 @@ fun ProductsTab(
                     // ── Buyer dropdown ──
                     ExposedDropdownMenuBox(
                         expanded = expandedCategory == category,
-                        onExpandedChange = {
-                            // whenever we open, re-fetch any new buyers
-                            if (it) settingsViewModel.refreshBuyers()
-                            expandedCategory = if (it) category else null
+                        onExpandedChange = { expand ->
+                            if (expand) settingsViewModel.refreshBuyers()
+                            expandedCategory = if (expand) category else null
                         }
                     ) {
                         TextField(
-                            value = selectedBuyerMap[category]
-                                ?.takeIf { it in buyersForUi }
-                                .orEmpty(),
+                            value         = selectedBuyerMap[category]?.takeIf { it in buyersForUi }.orEmpty(),
                             onValueChange = {},
-                            readOnly = true,
-                            placeholder = {
-                                Text(
-                                    if (!hasBuyers) "No buyer available"
-                                    else "Select Buyer"
-                                )
-                            },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expandedCategory == category)
-                            },
-                            modifier = Modifier
+                            readOnly      = true,
+                            placeholder   = { Text(if (!hasBuyers) "No buyer available" else "Select Buyer") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedCategory == category) },
+                            modifier      = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(
-                                    type = MenuAnchorType.PrimaryNotEditable,
-                                    enabled = true
-                                )
+                                .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
                         )
+
                         ExposedDropdownMenu(
                             expanded = expandedCategory == category,
                             onDismissRequest = { expandedCategory = null }
                         ) {
                             if (!hasBuyers) {
                                 DropdownMenuItem(
-                                    text = { Text("No buyer available") },
-                                    onClick = { /* no-op */ },
+                                    text    = { Text("No buyer available") },
+                                    onClick = { },
                                     enabled = false
                                 )
                             } else {
+                                // Disabled header prompt
+                                DropdownMenuItem(
+                                    text    = { Text("Select Buyer") },
+                                    onClick = { /* no-op */ },
+                                    enabled = false
+                                )
                                 buyersForUi.forEach { buyerName ->
                                     DropdownMenuItem(
                                         text = { Text(buyerName) },

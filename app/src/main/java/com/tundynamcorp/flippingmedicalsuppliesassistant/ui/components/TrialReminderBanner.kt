@@ -27,27 +27,31 @@ fun TrialReminderBanner(
 ) {
     if (trialStart == null) return
 
-    // 1) keep a clock that advances every minute
-    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    // tick every minute
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(trialStart) {
         while (true) {
-            delay(60_000L)                      // tick every 60s
+            delay(60_000L)
             now = System.currentTimeMillis()
         }
     }
 
-    // 2) compute elapsed/left
+    // compute elapsed / left (using minutes as stand-in for days)
     val minutesElapsed = ((now - trialStart) / 60_000L).coerceAtLeast(0L)
     val minutesLeft    = (30L - minutesElapsed).coerceAtLeast(0L)
 
-    // 3) decide when to show
-    val showWeekly    = minutesLeft > 7 && minutesLeft % 7 == 0L
+    // fire at days 24, 17, 10 → minutesLeft == 24,17,10
+    val showWeekly = minutesLeft == 24L ||
+            minutesLeft == 17L ||
+            minutesLeft == 10L
+
+    // then each of the final 7 days → minutesLeft in 1..7
     val showFinalWeek = minutesLeft in 1L..7L
 
     Log.d("TrialReminderBanner", "elapsed=$minutesElapsed left=$minutesLeft " +
-            "showWeekly=$showWeekly showFinalWeek=$showFinalWeek")
+            "weekly=$showWeekly finalWeek=$showFinalWeek")
 
-    if (!showWeekly && !showFinalWeek) return
+    if (!(showWeekly || showFinalWeek)) return
 
     val msg = if (showWeekly) {
         "⏳ $minutesLeft minutes left in your free trial!"
@@ -63,26 +67,37 @@ fun TrialReminderBanner(
         tonalElevation = 2.dp,
         shape          = MaterialTheme.shapes.small
     ) {
-        Row(
+        Column(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onUpgradeClick)
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(12.dp)
         ) {
-            Icon(
-                painter            = rememberVectorPainter(Icons.Default.Info),
-                contentDescription = null,
-                modifier           = Modifier.size(20.dp),
-                tint               = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(msg, color = MaterialTheme.colorScheme.onPrimary)
-            Spacer(Modifier.weight(1f))
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter            = rememberVectorPainter(Icons.Default.Info),
+                    contentDescription = null,
+                    modifier           = Modifier.size(20.dp),
+                    tint               = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text  = msg,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+            Spacer(Modifier.height(8.dp))
             Text(
-                "Upgrade",
+                text     = "Upgrade",
+                style    = MaterialTheme.typography.bodyMedium,
                 color    = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable(onClick = onUpgradeClick)
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .clickable(onClick = onUpgradeClick)
             )
         }
     }

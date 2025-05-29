@@ -14,18 +14,26 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Displays a 2×5 grid of historical prices with month labels.
+ * Displays a grid of historical prices with month labels,
+ * tailored to the number of points per category.
  *
- * @param editable      if true, each price cell is clickable and a “Reset” button is shown
- * @param onPriceClick  invoked with the index 0..9 when a price cell is clicked (only if editable)
- * @param onReset       invoked when the Reset button is tapped (only shown if editable)
+ * @param title         product description for dialog title and device‐type detection
+ * @param category      product category (e.g. "Test Strips", "Devices", "Misc", etc.)
+ * @param imageUrl      optional image URL
+ * @param lastUpdated   e.g. "10/22/2024"
+ * @param prices        list of prices from newest (index=0) to oldest
+ * @param editable      if true, cells are clickable and a “Reset” button is shown
+ * @param onPriceClick  invoked with the original index when a cell is clicked
+ * @param onReset       invoked when the Reset button is tapped
+ * @param onDismiss     close callback
  */
 @Composable
 fun PriceHistoryDialog(
     title: String,
+    category: String,
     imageUrl: String? = null,
-    lastUpdated: String,    // e.g. "10/22/2024"
-    prices: List<Float>,    // exactly 10 values: price1 (highest) … price10 (lowest)
+    lastUpdated: String,
+    prices: List<Float>,
     editable: Boolean = false,
     onPriceClick: (index: Int) -> Unit = {},
     onReset: () -> Unit = {},
@@ -40,8 +48,36 @@ fun PriceHistoryDialog(
         Date()
     }
 
-    // 2) build the 10 month labels (index 0 = baseDate +11mo … index 9 = baseDate +2mo)
-    val dateLabels = List(prices.size) { i ->
+    // 2) determine how many points to show
+    val maxPoints = when (category) {
+        "Test Strips" -> 10
+        "Devices" -> when {
+            title.contains("Dexcom", true) -> 7
+            title.contains("Omnipod", true)
+                    || title.contains("Dash", true)
+                    || title.contains("Cequr", true) -> 6
+            title.contains("Libre", true) -> 4
+            title.contains("Medtronic", true)
+                    || title.contains("Guardian", true)
+                    || title.contains("Mio", true)
+                    || title.contains("Sure-T", true)
+                    || title.contains("Silhouette", true) -> 9
+            title.contains("Tandem", true)
+                    || title.contains("TSlim", true)
+                    || title.contains("TrueSteel", true) -> 9
+            else -> prices.size
+        }
+        "Misc"      -> 3
+        "Insulin"   -> 1
+        "Tabs"      -> 1
+        "Inhalers"  -> 1
+        else        -> prices.size
+    }
+    val displayCount   = prices.size.coerceAtMost(maxPoints)
+    val displayPrices  = prices.take(displayCount)
+
+    // 3) build the date labels for only displayCount points
+    val dateLabels: List<String> = List(displayCount) { i ->
         Calendar.getInstance().apply {
             time = baseDate
             add(Calendar.MONTH, 11 - i)
@@ -51,80 +87,84 @@ fun PriceHistoryDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                // ◆ show image if available
+        text  = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // image
                 imageUrl?.let { url ->
                     AsyncImage(
-                        model = url,
+                        model             = url,
                         contentDescription = title,
-                        modifier = Modifier
+                        modifier          = Modifier
                             .size(120.dp)
                             .padding(bottom = 12.dp)
                     )
                 }
 
-                // top row of labels (0..4)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    dateLabels.take(5).forEach { month ->
-                        Text(month, Modifier.padding(4.dp))
+                // top row (first up to 5 points)
+                if (displayCount > 0) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        dateLabels.take(displayCount.coerceAtMost(5)).forEach { month ->
+                            Text(month, Modifier.padding(4.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        displayPrices.take(displayCount.coerceAtMost(5)).forEachIndexed { idx, price ->
+                            Text(
+                                text     = "$${price.toInt()}",
+                                modifier = Modifier
+                                    .padding(4.dp)
+                                    .then(
+                                        if (editable) Modifier.clickable { onPriceClick(idx) }
+                                        else Modifier
+                                    )
+                            )
+                        }
                     }
                 }
-                Spacer(Modifier.height(4.dp))
-                // top row of prices (0..4)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    prices.take(5).forEachIndexed { idx, price ->
-                        Text(
-                            text = "$${price.toInt()}",
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .then(
-                                    if (editable) Modifier.clickable { onPriceClick(idx) }
-                                    else Modifier
-                                )
-                        )
+
+                // bottom row (for points beyond the first 5)
+                if (displayCount > 5) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        dateLabels.drop(5).forEach { month ->
+                            Text(month, Modifier.padding(4.dp))
+                        }
                     }
-                }
-                Spacer(Modifier.height(12.dp))
-                // bottom row of labels (5..9)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    dateLabels.drop(5).forEach { month ->
-                        Text(month, Modifier.padding(4.dp))
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                // bottom row of prices (5..9)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    prices.drop(5).forEachIndexed { dropIdx, price ->
-                        val idx = dropIdx + 5
-                        Text(
-                            text = "$${price.toInt()}",
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .then(
-                                    if (editable) Modifier.clickable { onPriceClick(idx) }
-                                    else Modifier
-                                )
-                        )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        displayPrices.drop(5).forEachIndexed { dropIdx, price ->
+                            val idx = dropIdx + 5
+                            Text(
+                                text     = "$${price.toInt()}",
+                                modifier = Modifier
+                                    .padding(4.dp)
+                                    .then(
+                                        if (editable) Modifier.clickable { onPriceClick(idx) }
+                                        else Modifier
+                                    )
+                            )
+                        }
                     }
                 }
             }
         },
         confirmButton = {
-            // when editable, show Reset first
             if (editable) {
                 TextButton(onClick = onReset) {
                     Text("Reset")

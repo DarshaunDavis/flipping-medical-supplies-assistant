@@ -33,9 +33,9 @@ fun PricesTab(
         Spacer(Modifier.height(8.dp))
 
         HomeScreen(
-            products      = products,
-            query         = query,
-            onQueryChange = { homeViewModel.onQueryChanged(it) },
+            products       = products,
+            query          = query,
+            onQueryChange  = { homeViewModel.onQueryChanged(it) },
             onProductClick = { prod ->
                 homeViewModel.loadPriceHistory(prod.category, prod.barcode)
                 selectedProduct = prod
@@ -46,6 +46,7 @@ fun PricesTab(
     if (selectedProduct != null && ph != null) {
         PriceHistoryDialog(
             title       = selectedProduct!!.description,
+            category    = selectedProduct!!.category,    // <— new
             imageUrl    = selectedProduct!!.imageUrl,
             lastUpdated = ph!!.lastUpdated,
             prices      = ph!!.prices,
@@ -55,7 +56,10 @@ fun PricesTab(
                 overrideInput = ph!!.prices[idx].toInt().toString()
             },
             onReset = {
-                homeViewModel.resetOverrides(selectedProduct!!.category, selectedProduct!!.barcode)
+                homeViewModel.resetOverrides(
+                    selectedProduct!!.category,
+                    selectedProduct!!.barcode
+                )
             },
             onDismiss = {
                 homeViewModel.clearPriceHistory()
@@ -83,7 +87,11 @@ fun PricesTab(
             confirmButton = {
                 TextButton(onClick = {
                     overrideInput.toIntOrNull()?.let { newVal ->
-                        homeViewModel.overridePrice(selectedProduct!!.barcode, idx, newVal)
+                        homeViewModel.overridePrice(
+                            selectedProduct!!.barcode,
+                            idx,
+                            newVal
+                        )
                         editingIndex = null
                     }
                 }) { Text("Save") }

@@ -21,59 +21,67 @@ fun ProfitMarginTab(
 ) {
     val focusManager = LocalFocusManager.current
 
-    // 1) collect remote categories
-    LaunchedEffect(Unit) {
-        settingsViewModel.refreshCategories()
-    }
-    val remoteCats by settingsViewModel.categoryList
-        .collectAsState(initial = emptyList())
+    // Fetch & collect remote categories
+    LaunchedEffect(Unit) { settingsViewModel.refreshCategories() }
+    val remoteCats by settingsViewModel.categoryList.collectAsState(initial = emptyList())
     val categories = remoteCats.ifEmpty { listOf("Test Strips", "Devices", "Inhalers", "Insulin") }
 
-    var expanded     by remember { mutableStateOf(false) }
-    var selectedCat  by remember { mutableStateOf<String?>(null) }
-    var input        by remember { mutableStateOf("") }
+    var expanded    by remember { mutableStateOf(false) }
+    var selectedCat by remember { mutableStateOf<String?>(null) }
+    var input       by remember { mutableStateOf("") }
 
     Column(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())      // allow scrolling for overflow
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // ── Display existing margins in two centered rows ──
+        // ── Current Profit Margins ───────────────────────────
         Text("Current Profit Margins", style = MaterialTheme.typography.titleLarge)
-        // split into chunks of 3
+
+        // Two rows of three equal-weight columns
         categories.chunked(3).forEach { rowCats ->
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
+            Row(Modifier.fillMaxWidth()) {
                 rowCats.forEach { cat ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(cat, style = MaterialTheme.typography.bodyMedium)
-                        Text("${margins[cat]?.toInt() ?: 0}%",
-                            style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "${margins[cat]?.toInt() ?: 0}%",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
+                }
+                // Fill remaining slots if rowCats.size < 3
+                repeat(3 - rowCats.size) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
 
-        // ── Spinner to pick a category ──
+        // ── Set Profit Margin Form ────────────────────────────
         Text("Set Profit Margin (%)", style = MaterialTheme.typography.titleMedium)
+
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = {
                 if (!expanded) focusManager.clearFocus()
                 expanded = !expanded
-            }
+            },
+            modifier = Modifier.fillMaxWidth()
         ) {
             TextField(
-                value        = selectedCat.orEmpty(),
-                onValueChange= {},
-                readOnly     = true,
-                placeholder  = { Text("Select Category") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                modifier     = Modifier
+                value         = selectedCat.orEmpty(),
+                onValueChange = {},
+                readOnly      = true,
+                placeholder   = { Text("Select Category") },
+                trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier      = Modifier
                     .fillMaxWidth()
                     .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
             )
@@ -81,10 +89,10 @@ fun ProfitMarginTab(
                 expanded         = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                // disabled prompt
+                // Disabled prompt
                 DropdownMenuItem(
                     text    = { Text("Select Category") },
-                    onClick = { },
+                    onClick = { /* no-op */ },
                     enabled = false
                 )
                 categories.forEach { cat ->
@@ -99,7 +107,6 @@ fun ProfitMarginTab(
             }
         }
 
-        // ── Input field ──
         OutlinedTextField(
             value         = input,
             onValueChange = { input = it.filter(Char::isDigit) },
@@ -108,7 +115,6 @@ fun ProfitMarginTab(
             modifier      = Modifier.fillMaxWidth()
         )
 
-        // ── Submit button ──
         Button(
             onClick = {
                 selectedCat?.let { cat ->

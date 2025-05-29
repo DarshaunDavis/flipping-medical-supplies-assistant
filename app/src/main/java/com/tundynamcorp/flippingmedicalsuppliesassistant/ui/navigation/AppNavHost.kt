@@ -5,9 +5,9 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -178,6 +178,7 @@ fun AppNavHost() {
                             ?.let { prod ->
                                 PriceHistoryDialog(
                                     title       = prod.description,
+                                    category    = prod.category,          // <— added!
                                     imageUrl    = prod.imageUrl,
                                     lastUpdated = ph!!.lastUpdated,
                                     prices      = ph!!.prices,
@@ -189,11 +190,9 @@ fun AppNavHost() {
                             }
                     }
                     composable("scan") {
-                        /* ...unchanged... */
                         ScanScreen()
                     }
                     composable("invoice") {
-                        /* ...unchanged... */
                         InvoiceScreen()
                     }
                     composable("admin") {
@@ -210,7 +209,7 @@ fun AppNavHost() {
             }
 
             // ── Banner Ad ──
-            BannerAd(modifier = Modifier.fillMaxWidth().height(50.dp))
+            BannerAd(Modifier.fillMaxWidth().height(50.dp))
         }
     }
 }

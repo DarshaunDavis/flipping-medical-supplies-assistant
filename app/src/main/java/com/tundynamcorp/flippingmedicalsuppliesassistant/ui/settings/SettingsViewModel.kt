@@ -14,6 +14,8 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+private const val TAG = "SettingsVM"
+
 /**
  * Mirror of each entry under the top-level `/buyers` node.
  */
@@ -35,9 +37,16 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val _buyerList = MutableStateFlow<List<BuyerInfo>>(emptyList())
     val buyerList: StateFlow<List<BuyerInfo>> = _buyerList.asStateFlow()
 
+    // ─── LIVE CATEGORIES ─────────────────────────────
+    private val _categoryList = MutableStateFlow<List<String>>(emptyList())
+    val categoryList: StateFlow<List<String>> = _categoryList.asStateFlow()
+
     init {
-        // initial load
-        viewModelScope.launch { loadBuyers() }
+        // initial load of both buyers and categories
+        viewModelScope.launch {
+            loadBuyers()
+            loadCategories()
+        }
     }
 
     /** Public API to re-pull the buyers list on demand */
@@ -45,9 +54,8 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { loadBuyers() }
     }
 
-    /** actual fetch logic */
     private suspend fun loadBuyers() {
-        Log.d("SettingsViewModel", "🔍 Fetching buyers from $baseUrl/buyers.json")
+        Log.d(TAG, "🔍 Fetching buyers from $baseUrl/buyers.json")
         try {
             val jsonText = withContext(Dispatchers.IO) {
                 (URL("$baseUrl/buyers.json").openConnection() as HttpURLConnection).run {
@@ -70,9 +78,34 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }.toList()
             _buyerList.value = list
-            Log.d("SettingsViewModel", "✅ Loaded ${list.size} buyers")
+            Log.d(TAG, "✅ Loaded ${list.size} buyers")
         } catch (th: Throwable) {
-            Log.e("SettingsViewModel", "❌ Failed to fetch buyers", th)
+            Log.e(TAG, "❌ Failed fetching buyers", th)
+        }
+    }
+
+    /** Public API to re-pull the categories list on demand */
+    fun refreshCategories() {
+        viewModelScope.launch { loadCategories() }
+    }
+
+    private suspend fun loadCategories() {
+        Log.d(TAG, "🔍 Fetching categories from $baseUrl/categories.json")
+        try {
+            val jsonText = withContext(Dispatchers.IO) {
+                (URL("$baseUrl/categories.json").openConnection() as HttpURLConnection).run {
+                    inputStream.bufferedReader().use { it.readText() }
+                }
+            }
+            val root = JSONObject(jsonText)
+            val list = root.keys().asSequence()
+                .filter { key -> root.optBoolean(key, false) }
+                .sorted()
+                .toList()
+            _categoryList.value = list
+            Log.d(TAG, "✅ Loaded categories: $list")
+        } catch (th: Throwable) {
+            Log.e(TAG, "❌ Failed fetching categories", th)
         }
     }
 

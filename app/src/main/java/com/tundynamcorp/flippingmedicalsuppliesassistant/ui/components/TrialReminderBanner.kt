@@ -1,5 +1,6 @@
 package com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -8,68 +9,81 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
+/**
+ * Shows an upgrade‐now banner at 7, 14, 21 minutes left,
+ * then every minute from 1–7.
+ */
 @Composable
 fun TrialReminderBanner(
     trialStart: Long?,
-    now: Long = System.currentTimeMillis(),
     onUpgradeClick: () -> Unit
 ) {
     if (trialStart == null) return
 
-    val daysElapsed = ((now - trialStart) / 86_400_000L).coerceAtLeast(0L)
-    val daysLeft    = (30L - daysElapsed).coerceAtLeast(0L)
+    // 1) keep a clock that advances every minute
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(trialStart) {
+        while (true) {
+            delay(60_000L)                      // tick every 60s
+            now = System.currentTimeMillis()
+        }
+    }
 
-    val showWeekly = daysLeft > 7 && daysLeft % 7 == 0L
-    val showFinalWeek = daysLeft in 1L..7L
+    // 2) compute elapsed/left
+    val minutesElapsed = ((now - trialStart) / 60_000L).coerceAtLeast(0L)
+    val minutesLeft    = (30L - minutesElapsed).coerceAtLeast(0L)
+
+    // 3) decide when to show
+    val showWeekly    = minutesLeft > 7 && minutesLeft % 7 == 0L
+    val showFinalWeek = minutesLeft in 1L..7L
+
+    Log.d("TrialReminderBanner", "elapsed=$minutesElapsed left=$minutesLeft " +
+            "showWeekly=$showWeekly showFinalWeek=$showFinalWeek")
 
     if (!showWeekly && !showFinalWeek) return
 
     val msg = if (showWeekly) {
-        "⏳ $daysLeft days left in your free trial!"
+        "⏳ $minutesLeft minutes left in your free trial!"
     } else {
-        "⚠️ $daysLeft days left – trial ends soon!"
+        "⚠️ $minutesLeft minutes left – trial ends soon!"
     }
 
-        Surface(
-            color = MaterialTheme.colorScheme.primary.copy(alpha = .1f),
-            modifier = Modifier
+    Surface(
+        color          = MaterialTheme.colorScheme.primary.copy(alpha = .1f),
+        modifier       = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp, horizontal = 8.dp),
+        tonalElevation = 2.dp,
+        shape          = MaterialTheme.shapes.small
+    ) {
+        Row(
+            Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp, horizontal = 8.dp),
-            tonalElevation = 2.dp,
-            shape = MaterialTheme.shapes.small
+                .clickable(onClick = onUpgradeClick)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onUpgradeClick)
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = rememberVectorPainter(Icons.Default.Info),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    msg,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(Modifier.weight(1f))
-                Text(
-                    "Upgrade",
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.clickable(onClick = onUpgradeClick)
-                )
-            }
+            Icon(
+                painter            = rememberVectorPainter(Icons.Default.Info),
+                contentDescription = null,
+                modifier           = Modifier.size(20.dp),
+                tint               = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(msg, color = MaterialTheme.colorScheme.onPrimary)
+            Spacer(Modifier.weight(1f))
+            Text(
+                "Upgrade",
+                color    = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(onClick = onUpgradeClick)
+            )
         }
     }
+}

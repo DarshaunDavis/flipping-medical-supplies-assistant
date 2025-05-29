@@ -26,6 +26,7 @@ import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.LoginDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.auth.RegisterDialog
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components.TrialCountdown
+import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.components.TrialReminderBanner
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.BottomNavigationBar
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.HomeScreen
 import com.tundynamcorp.flippingmedicalsuppliesassistant.ui.home.PriceHistoryDialog
@@ -119,16 +120,17 @@ fun AppNavHost() {
                         Text("$greetingRest,\n$rawName!", style = MaterialTheme.typography.bodyLarge)
                     }
                 }
-                // logo + trial
+                // logo + countdown
                 Column(
                     Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     ThemedAppLogo(Modifier.size(120.dp))
                     Spacer(Modifier.height(8.dp))
-                    TrialCountdown(trialStart = trialStart, modifier = Modifier.clickable {
-                        navController.navigate("subscription")
-                    })
+                    TrialCountdown(
+                        trialStart = trialStart,
+                        modifier   = Modifier.clickable { navController.navigate("subscription") }
+                    )
                 }
                 Text(
                     text = if (firebaseUser == null) "Login" else "Logout",
@@ -160,14 +162,20 @@ fun AppNavHost() {
                 )
             }
 
+            // ── Trial Reminder Banner ──
+            TrialReminderBanner(
+                trialStart     = trialStart,
+                onUpgradeClick = { navController.navigate("subscription") }
+            )
+
             // ── Main NavHost ──
             Box(Modifier.weight(1f)) {
                 NavHost(navController, startDestination = "home", Modifier.fillMaxSize()) {
                     composable("home") {
                         HomeScreen(
-                            products      = products,
-                            query         = query,
-                            onQueryChange = { homeVm.onQueryChanged(it) },
+                            products       = products,
+                            query          = query,
+                            onQueryChange  = { homeVm.onQueryChanged(it) },
                             onProductClick = { prod ->
                                 homeVm.loadPriceHistory(prod.category, prod.barcode)
                                 selectedProduct = prod
@@ -178,7 +186,7 @@ fun AppNavHost() {
                             ?.let { prod ->
                                 PriceHistoryDialog(
                                     title       = prod.description,
-                                    category    = prod.category,          // <— added!
+                                    category    = prod.category,
                                     imageUrl    = prod.imageUrl,
                                     lastUpdated = ph!!.lastUpdated,
                                     prices      = ph!!.prices,
@@ -209,7 +217,9 @@ fun AppNavHost() {
             }
 
             // ── Banner Ad ──
-            BannerAd(Modifier.fillMaxWidth().height(50.dp))
+            BannerAd(Modifier
+                .fillMaxWidth()
+                .height(50.dp))
         }
     }
 }

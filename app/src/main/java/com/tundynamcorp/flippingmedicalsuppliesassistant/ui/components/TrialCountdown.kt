@@ -11,8 +11,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 /**
- * Shows a live countdown of days/hours/minutes/seconds remaining
- * in a 30-day trial that started at [trialStart] (ms since epoch).
+ * Shows a live countdown of minutes/seconds remaining
+ * in a 30-minute trial that started at [trialStart] (ms since epoch).
  */
 @Composable
 fun TrialCountdown(
@@ -21,12 +21,11 @@ fun TrialCountdown(
 ) {
     if (trialStart == null) return
 
-    // Compute the trial cutoff timestamp
+    // now a 30-minute trial instead of 30 days
     val cutoff = remember(trialStart) {
-        trialStart + 30L * 24 * 60 * 60 * 1000
+        trialStart + 30L * 60 * 1000
     }
 
-    // timeLeft will tick down every second
     var timeLeft by remember { mutableLongStateOf(cutoff - System.currentTimeMillis()) }
 
     LaunchedEffect(cutoff) {
@@ -38,40 +37,23 @@ fun TrialCountdown(
         }
     }
 
-    // Break into days / hours / minutes / seconds
-    val days    = timeLeft / (1000 * 60 * 60 * 24)
-    val hours   = (timeLeft / (1000 * 60 * 60)      ) % 24
-    val minutes = (timeLeft / (1000 * 60)            ) % 60
-    val seconds = (timeLeft / 1000                   ) % 60
+    // Compute minutes / seconds (days & hours will always be zero here)
+    val days    = timeLeft / (1000 * 60 * 60 * 24)    // always 0
+    val hours   = (timeLeft / (1000 * 60 * 60)) % 24  // always 0
+    val minutes = (timeLeft / (1000 * 60)) % 60
+    val seconds = (timeLeft / 1000) % 60
 
     Row(modifier = modifier) {
-        Text(
-            text = "🕒 ",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Text(
-            text = "${days}d",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text("🕒 ", style = MaterialTheme.typography.bodyMedium)
+        // You can omit days/hours if you like; here they’ll simply read “0d 0h”
+        Text("${days}d",     style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.width(4.dp))
-        Text(
-            text = "${hours}h",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text("${hours}h",    style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.width(4.dp))
-        Text(
-            text = "${minutes}m",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text("${minutes}m",  style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.width(4.dp))
-        Text(
-            text = "${seconds}s",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text("${seconds}s",  style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.width(4.dp))
-        Text(
-            text = "left in trial",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text("left in trial", style = MaterialTheme.typography.bodyMedium)
     }
 }

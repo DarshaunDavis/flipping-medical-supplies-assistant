@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.tundynamcorp.flippingmedicalsuppliesassistant"
+    namespace = "com.lislal.flippingmedicalsuppliesassistant"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.tundynamcorp.flippingmedicalsuppliesassistant"
+        applicationId = "com.lislal.flippingmedicalsuppliesassistant"
         minSdk = 23
         targetSdk = 35
         versionCode = 1

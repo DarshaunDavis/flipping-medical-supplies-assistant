@@ -14,11 +14,11 @@ import kotlinx.coroutines.delay
 
 /**
  * Shows a “paginated” reminder banner during trial:
- *  • Once at 7d (represented by 24 minutes)
- *  • Once at 14d (17 minutes) and 21d (10 minutes)
- *  • Then daily for the final 7d (7..1 minutes)
+ *  • Once at  7d (→ 70 seconds into the 5-min test window)
+ *  • Once at 14d (→ 140s) & 21d (→ 210s)
+ *  • Then daily for final 7d (→ 70..10s)
  *
- * For testing, this uses minutes; swap back to days when ready.
+ * For testing, this uses seconds; swap back to minutes when ready.
  */
 @Composable
 fun TrialReminderBanner(
@@ -27,41 +27,45 @@ fun TrialReminderBanner(
 ) {
     if (trialStart == null) return
 
-    // 30-minute trial end for testing (30 days → 30 minutes)
-    val cutoff = remember(trialStart) { trialStart + 30 * 60_000L }
+    // 5-minute cutoff for testing (30 days → 5 minutes)
+    // and 10 seconds = 1 day
+    val cutoff = remember(trialStart) { trialStart + 5 * 60_000L }
 
-    // Track “now” with optimized long-based state
+    // Track “now” with long‐based state
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(cutoff) {
         while (true) {
             now = System.currentTimeMillis()
-            delay(60_000L)  // tick every minute
+            delay(10_000L)  // tick every 10 seconds (≈ 1 day)
         }
     }
 
-    // Minutes left in trial, coerced ≥ 0
-    val minutesLeft = ((cutoff - now).coerceAtLeast(0L) / 60_000L)
+    // Seconds left in trial, coerced ≥ 0
+    val secLeft = (cutoff - now).coerceAtLeast(0L) / 1_000L
 
-    // Only show at our key “minute” marks
-    val showBanner = when (minutesLeft) {
-        24L,      // 7d stand-in
-        17L, 10L, // 14d & 21d stand-ins
-        in 7L downTo 1L // final 7 days stand-in
+    // Compute “daysLeft” in test‐sense: 1 day = 10 seconds
+    val daysLeft = (secLeft / 10L).coerceAtLeast(0L)
+
+    // Only show at our key “day” marks
+    val showBanner = when (daysLeft) {
+        7L,         // 7 days stand-in (70s)
+        14L, 21L,   // 14d & 21d (140s,210s)
+        in 1L..7L   // final 7 days (70s down to 10s)
             -> true
         else -> false
     }
     if (!showBanner) return
 
-    // Traffic-light background colors
-    val backgroundColor = when (minutesLeft) {
-        24L              -> Color(0xFF2E7D32) // dark green
-        17L, 10L         -> Color(0xFFF9A825) // dark yellow
-        in 7L downTo 1L  -> Color(0xFFC62828) // dark red
-        else             -> MaterialTheme.colorScheme.primary
+    // Traffic-light colors
+    val background = when (daysLeft) {
+        7L          -> Color(0xFF2E7D32) // dark green
+        14L,21L     -> Color(0xFFF9A825) // dark yellow
+        in 1L..7L   -> Color(0xFFC62828) // dark red
+        else        -> MaterialTheme.colorScheme.primary
     }
 
     Surface(
-        color          = backgroundColor.copy(alpha = 0.1f),
+        color          = background.copy(alpha = 0.1f),
         contentColor   = Color.White,
         tonalElevation = 4.dp,
         shape          = MaterialTheme.shapes.small,
@@ -74,10 +78,10 @@ fun TrialReminderBanner(
                 .clickable(onClick = onUpgradeClick)
                 .padding(16.dp)
         ) {
-            val message = if (minutesLeft > 7L) {
-                "⏳ $minutesLeft minutes left in your free trial!"
+            val msg = if (daysLeft > 7L) {
+                "⏳ $daysLeft days left in your free trial!"
             } else {
-                "⚠️ $minutesLeft minutes left – trial ends soon!"
+                "⚠️ $daysLeft days left – trial ends soon!"
             }
 
             Row(
@@ -85,14 +89,14 @@ fun TrialReminderBanner(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector      = Icons.Default.Info,
+                    imageVector       = Icons.Default.Info,
                     contentDescription= null,
-                    tint             = Color.White,
-                    modifier         = Modifier.size(20.dp)
+                    tint              = Color.White,
+                    modifier          = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text  = message,
+                    text  = msg,
                     style = MaterialTheme.typography.bodyMedium.copy(color = Color.White)
                 )
             }

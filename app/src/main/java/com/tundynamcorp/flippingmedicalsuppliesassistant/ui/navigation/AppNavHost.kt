@@ -38,8 +38,13 @@ import java.util.Calendar
 
 @Composable
 private fun ThemedAppLogo(modifier: Modifier = Modifier) {
-    val logoRes = if (isSystemInDarkTheme()) R.drawable.fmsadarklogo else R.drawable.fmsalightlogo
-    Image(painter = painterResource(logoRes), contentDescription = null, modifier = modifier)
+    val logoRes =
+        if (isSystemInDarkTheme()) R.drawable.fmsadarklogo else R.drawable.fmsalightlogo
+    Image(
+        painter = painterResource(logoRes),
+        contentDescription = null,
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -48,7 +53,7 @@ fun AppNavHost() {
     val activity      = context as? Activity
     val navController = rememberNavController()
 
-    // double-back-to-exit
+    // ── Double-back to exit ─────────────────────────────
     var lastBackPressTime by remember { mutableLongStateOf(0L) }
     BackHandler {
         if (navController.previousBackStackEntry != null) {
@@ -64,28 +69,29 @@ fun AppNavHost() {
         }
     }
 
-    // Auth + role + trial
-    val authVm: AuthViewModel = viewModel()
+    // ── Auth + Role + Trial from AuthViewModel ──
+    val authVm       : AuthViewModel      = viewModel()
     val firebaseUser by authVm.user.collectAsState()
     val dbProfile    by authVm.profileInfo.collectAsState()
     val role         by authVm.role.collectAsState()
     val trialStart   by authVm.trialStart.collectAsState()
-    val isTrialActive by authVm.isTrialActive.collectAsState()
+    // We'll set this flag from the Countdown callback:
+    var isTrialActiveLocal by remember { mutableStateOf(false) }
 
-    // Home list + state
-    val homeVm: HomeViewModel = viewModel()
+    // ── Products and PriceHistory ──
+    val homeVm   : HomeViewModel = viewModel()
     val query    by homeVm.query.collectAsState()
     val products by homeVm.filteredProducts.collectAsState()
     val ph       by homeVm.priceHistory.collectAsState()
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
-    // header greeting data
+    // ── Greeting calculation ──
     val rawName = dbProfile?.name.takeIf { it?.isNotBlank() == true }
         ?: firebaseUser?.displayName.orEmpty()
     val showingGreeting = rawName.isNotBlank()
-    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    val greetingWord = "Good"
-    val greetingRest = when (hour) {
+    val hour           = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val greetingWord   = "Good"
+    val greetingRest   = when (hour) {
         in 5..11  -> "Morning"
         in 12..17 -> "Afternoon"
         else      -> "Evening"
@@ -96,23 +102,31 @@ fun AppNavHost() {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar      = { BottomNavigationBar(navController, role, isTrialActive) }
+        bottomBar      = {
+            BottomNavigationBar(
+                navController   = navController,
+                currentRole     = role,
+                isTrialActive   = isTrialActiveLocal
+            )
+        }
     ) { innerPadding ->
         Column(
-            Modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(innerPadding)
+                .padding(innerPadding),
+            verticalArrangement = Arrangement.Top
         ) {
-            // ── Header ──
+            // ── Header Row ──
             Box(
-                Modifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
             ) {
+                // Greeting at left
                 if (showingGreeting) {
                     Column(
-                        Modifier
+                        modifier = Modifier
                             .align(Alignment.CenterStart)
                             .padding(start = 16.dp)
                     ) {
@@ -120,26 +134,35 @@ fun AppNavHost() {
                         Text("$greetingRest,\n$rawName!", style = MaterialTheme.typography.bodyLarge)
                     }
                 }
-                // logo + countdown
+
+                // Logo + Countdown center
                 Column(
-                    Modifier.align(Alignment.Center),
+                    modifier = Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     ThemedAppLogo(Modifier.size(120.dp))
                     Spacer(Modifier.height(8.dp))
-                    TrialCountdown(
-                        trialStart = trialStart,
-                        modifier   = Modifier.clickable { navController.navigate("subscription") }
-                    )
+
+                    // Show countdown only while trial is active
+                    if (trialStart != null && isTrialActiveLocal) {
+                        TrialCountdown(
+                            trialStart      = trialStart,
+                            onActiveChanged = { active -> isTrialActiveLocal = active },
+                            modifier        = Modifier.clickable { navController.navigate("subscription") }
+                        )
+                    }
                 }
+
+                // Login/Logout at right
                 Text(
-                    text = if (firebaseUser == null) "Login" else "Logout",
-                    style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary),
-                    modifier = Modifier
+                    text    = if (firebaseUser == null) "Login" else "Logout",
+                    style   = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary),
+                    modifier= Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = 16.dp)
                         .clickable {
-                            if (firebaseUser == null) showLogin = true else authVm.signOut()
+                            if (firebaseUser == null) showLogin = true
+                            else authVm.signOut()
                         }
                 )
             }
@@ -155,22 +178,28 @@ fun AppNavHost() {
             }
             if (showRegister) {
                 RegisterDialog(
-                    authViewModel     = authVm,
-                    onDismiss         = { showRegister = false },
-                    onSignInClick     = { showRegister = false; showLogin = true },
+                    authViewModel      = authVm,
+                    onDismiss          = { showRegister = false },
+                    onSignInClick      = { showRegister = false; showLogin = true },
                     onRegisterSuccess = { showRegister = false }
                 )
             }
 
-            // ── Trial Reminder Banner ──
-            TrialReminderBanner(
-                trialStart     = trialStart,
-                onUpgradeClick = { navController.navigate("subscription") }
-            )
+            // ── Trial Reminder Banner (only while active) ──
+            if (isTrialActiveLocal) {
+                TrialReminderBanner(
+                    trialStart     = trialStart,
+                    onUpgradeClick = { navController.navigate("subscription") }
+                )
+            }
 
-            // ── Main NavHost ──
-            Box(Modifier.weight(1f)) {
-                NavHost(navController, startDestination = "home", Modifier.fillMaxSize()) {
+            // ── Main Navigation ──
+            Box(modifier = Modifier.weight(1f)) {
+                NavHost(
+                    navController    = navController,
+                    startDestination = "home",
+                    modifier         = Modifier.fillMaxSize()
+                ) {
                     composable("home") {
                         HomeScreen(
                             products       = products,
@@ -181,6 +210,8 @@ fun AppNavHost() {
                                 selectedProduct = prod
                             }
                         )
+
+                        // Price-history dialog
                         selectedProduct
                             ?.takeIf { ph != null }
                             ?.let { prod ->
@@ -197,29 +228,27 @@ fun AppNavHost() {
                                 )
                             }
                     }
-                    composable("scan") {
-                        ScanScreen()
-                    }
-                    composable("invoice") {
-                        InvoiceScreen()
-                    }
-                    composable("admin") {
+                    composable("scan")   { ScanScreen() }
+                    composable("invoice"){ InvoiceScreen() }
+                    composable("admin")  {
                         AdminScreen(
                             homeViewModel  = homeVm,
                             currentRole    = role,
-                            isTrialActive  = isTrialActive,
+                            isTrialActive  = isTrialActiveLocal,
                             onUpgradeClick = { /* … */ }
                         )
                     }
-                    composable("settings")   { SettingsScreen() }
+                    composable("settings")     { SettingsScreen() }
                     composable("subscription"){ SubscriptionScreen(navController) }
                 }
             }
 
             // ── Banner Ad ──
-            BannerAd(Modifier
-                .fillMaxWidth()
-                .height(50.dp))
+            BannerAd(
+                modifier= Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+            )
         }
     }
 }

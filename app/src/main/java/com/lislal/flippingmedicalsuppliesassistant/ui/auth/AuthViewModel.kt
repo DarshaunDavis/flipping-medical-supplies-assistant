@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class AuthViewModel : ViewModel() {
-    private val auth   = FirebaseAuth.getInstance()
-    private val dbRef  = Firebase.database.reference.child("users")
+    private val auth  = FirebaseAuth.getInstance()
+    private val dbRef = Firebase.database.reference.child("users")
 
     // FirebaseUser flow
     private val _user = MutableStateFlow(auth.currentUser)
@@ -30,17 +30,20 @@ class AuthViewModel : ViewModel() {
     private val _trialStart = MutableStateFlow<Long?>(null)
     val trialStart: StateFlow<Long?> = _trialStart.asStateFlow()
 
-    @Suppress("unused") // used in UI gating elsewhere
+    // Derived flag: is trial still active?
+    // In this “reverted” version, you can check if you’d like,
+    // but the AppNavHost is using the countdown’s onActiveChanged instead.
     val isTrialActive: StateFlow<Boolean> = trialStart
         .map { ts ->
             ts?.let {
-                val cutoff = it + 30L * 24 * 60 * 60 * 1000
+                // 5-minute trial for testing (swap back to 30L * 24*60*60*1000 for production)
+                val cutoff = it + 5L * 60_000L
                 System.currentTimeMillis() <= cutoff
             } ?: false
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    // SellerInfo flow from RTDB
+    // SellerInfo flow
     private val _profileInfo = MutableStateFlow<SellerInfo?>(null)
     val profileInfo: StateFlow<SellerInfo?> = _profileInfo.asStateFlow()
 
@@ -66,6 +69,7 @@ class AuthViewModel : ViewModel() {
                             _role.value = UserRole.User
                         }
                     })
+
                 // load trialStart timestamp
                 dbRef.child(u.uid).child("trialStart")
                     .addValueEventListener(object : ValueEventListener {
@@ -76,6 +80,7 @@ class AuthViewModel : ViewModel() {
                             // no-op
                         }
                     })
+
                 // load profile details
                 listenForProfile(u.uid)
             }
@@ -105,7 +110,7 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /** Register new user with trial start and default 'User' role */
+    /** Register new user with trialStart and default 'User' role */
     fun register(
         name: String,
         email: String,
@@ -131,15 +136,14 @@ class AuthViewModel : ViewModel() {
                                 .setValue(
                                     mapOf(
                                         "displayName" to capName,
-                                        "role" to UserRole.User.name,
-                                        "trialStart" to ServerValue.TIMESTAMP
+                                        "role"        to UserRole.User.name,
+                                        "trialStart"  to ServerValue.TIMESTAMP
                                     )
                                 )
                                 .addOnSuccessListener {
-                                    // **Immediate local state update** so UI gating reacts instantly:
+                                    // Immediately reflect in-app:
                                     _role.value = UserRole.User
                                     _trialStart.value = System.currentTimeMillis()
-
                                     onResult(true, null)
                                 }
                                 .addOnFailureListener { ex -> onResult(false, ex.localizedMessage) }
@@ -150,7 +154,7 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /** Update profile fields in Auth and RTDB */
+    /** Update profile fields */
     fun updateProfile(
         info: SellerInfo,
         onResult: (Boolean, String?) -> Unit
@@ -190,13 +194,13 @@ class AuthViewModel : ViewModel() {
             .addOnFailureListener { ex -> onResult(false, ex.localizedMessage) }
     }
 
-    /** Change current user's password */
+    /** Change current user’s password */
     fun changePassword(
         currentPassword: String,
         newPassword: String,
         onResult: (Boolean, String?) -> Unit
     ) {
-        val user = auth.currentUser
+        val user  = auth.currentUser
         val email = user?.email
         if (user == null || email.isNullOrBlank()) {
             onResult(false, "No signed-in user")
@@ -216,32 +220,31 @@ class AuthViewModel : ViewModel() {
     /** Sign out and reset state */
     fun signOut() {
         auth.signOut()
-        _user.value = null
-        _role.value = UserRole.Guest
-        _trialStart.value = null
+        _user.value        = null
+        _role.value        = UserRole.Guest
+        _trialStart.value  = null
         _profileInfo.value = null
     }
 
-    @Suppress("unused") // called by billing integration
+    /** Called when subscription is purchased */
     fun onSubscriptionPurchased() {
         auth.currentUser?.uid?.let { uid ->
             dbRef.child(uid)
                 .child("role")
                 .setValue(UserRole.Subscriber.name)
                 .addOnSuccessListener {
-                    // immediately reflect in-app
                     _role.value = UserRole.Subscriber
                 }
         }
     }
 
-    @Suppress("unused") // admin tool
+    @Suppress("unused") // Admin tool
     fun grantAdmin(uid: String) {
         dbRef.child(uid).child("role")
             .setValue(UserRole.Admin.name)
     }
 
-    /** Listen for RTDB profile changes */
+    /** Listen for RTDB profile changes (including displayName) */
     private fun listenForProfile(uid: String) {
         dbRef.child(uid)
             .addValueEventListener(object : ValueEventListener {

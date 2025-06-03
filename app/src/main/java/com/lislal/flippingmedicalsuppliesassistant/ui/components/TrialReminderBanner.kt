@@ -4,7 +4,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,11 +17,11 @@ import kotlinx.coroutines.delay
 
 /**
  * Shows a “paginated” reminder banner during trial:
- *  • Once at  7d (→ 70 seconds into the 5-min test window)
- *  • Once at 14d (→ 140s) & 21d (→ 210s)
- *  • Then daily for final 7d (→ 70..10s)
+ *  • Once at 7d (represented by 4 minutes)
+ *  • Once at 14d (3 minutes) and 21d (2 minutes)
+ *  • Then daily for the final 1 minute (1 minute)
  *
- * For testing, this uses seconds; swap back to minutes when ready.
+ * For testing, this uses a 5-minute trial. Swap back to 30 minutes (30 days) for production.
  */
 @Composable
 fun TrialReminderBanner(
@@ -27,45 +30,42 @@ fun TrialReminderBanner(
 ) {
     if (trialStart == null) return
 
-    // 5-minute cutoff for testing (30 days → 5 minutes)
-    // and 10 seconds = 1 day
-    val cutoff = remember(trialStart) { trialStart + 5 * 60_000L }
+    // For testing: 5 minutes total (represents 5 days). In production, use 30L * 24*60*60*1000
+    val windowMs = 5L * 60_000L
+    val cutoff = remember(trialStart) { trialStart + windowMs }
 
-    // Track “now” with long‐based state
+    // Track “now” each minute
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(cutoff) {
         while (true) {
             now = System.currentTimeMillis()
-            delay(10_000L)  // tick every 10 seconds (≈ 1 day)
+            delay(60_000L) // tick every minute
         }
     }
 
-    // Seconds left in trial, coerced ≥ 0
-    val secLeft = (cutoff - now).coerceAtLeast(0L) / 1_000L
+    // Minutes left in trial (≥ 0)
+    val minutesLeft = ((cutoff - now).coerceAtLeast(0L) / 60_000L)
 
-    // Compute “daysLeft” in test‐sense: 1 day = 10 seconds
-    val daysLeft = (secLeft / 10L).coerceAtLeast(0L)
-
-    // Only show at our key “day” marks
-    val showBanner = when (daysLeft) {
-        7L,         // 7 days stand-in (70s)
-        14L, 21L,   // 14d & 21d (140s,210s)
-        in 1L..7L   // final 7 days (70s down to 10s)
+    // Only show banner at our key “minute” marks:
+    val showBanner = when (minutesLeft) {
+        4L,       // 1 day before (7d stand-in)
+        3L, 2L,   // 2 and 3 days before (14d & 21d stand-in)
+        1L        // final day (1 minute stand-in)
             -> true
-        else -> false
+        else   -> false
     }
     if (!showBanner) return
 
-    // Traffic-light colors
-    val background = when (daysLeft) {
-        7L          -> Color(0xFF2E7D32) // dark green
-        14L,21L     -> Color(0xFFF9A825) // dark yellow
-        in 1L..7L   -> Color(0xFFC62828) // dark red
+    // Traffic-light background colors
+    val backgroundColor = when (minutesLeft) {
+        4L          -> Color(0xFF2E7D32) // dark green
+        in 3L..2L   -> Color(0xFFF9A825) // dark yellow
+        1L          -> Color(0xFFC62828) // dark red
         else        -> MaterialTheme.colorScheme.primary
     }
 
     Surface(
-        color          = background.copy(alpha = 0.1f),
+        color          = backgroundColor.copy(alpha = 0.1f),
         contentColor   = Color.White,
         tonalElevation = 4.dp,
         shape          = MaterialTheme.shapes.small,
@@ -78,10 +78,10 @@ fun TrialReminderBanner(
                 .clickable(onClick = onUpgradeClick)
                 .padding(16.dp)
         ) {
-            val msg = if (daysLeft > 7L) {
-                "⏳ $daysLeft days left in your free trial!"
+            val message = if (minutesLeft > 1L) {
+                "⏳ $minutesLeft minutes left in your free trial!"
             } else {
-                "⚠️ $daysLeft days left – trial ends soon!"
+                "⚠️ $minutesLeft minute left – trial ends soon!"
             }
 
             Row(
@@ -96,13 +96,11 @@ fun TrialReminderBanner(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text  = msg,
+                    text  = message,
                     style = MaterialTheme.typography.bodyMedium.copy(color = Color.White)
                 )
             }
-
             Spacer(Modifier.height(12.dp))
-
             Text(
                 text     = "Upgrade",
                 style    = MaterialTheme.typography.bodyMedium.copy(

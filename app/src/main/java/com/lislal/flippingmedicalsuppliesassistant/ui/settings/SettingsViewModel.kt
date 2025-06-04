@@ -17,9 +17,9 @@ import java.net.URL
 private const val TAG = "SettingsVM"
 
 /**
- * Mirror of each entry under the top-level `/buyers` node.
+ * Mirror of each entry under the top-level `/wholesalers` node.
  */
-data class BuyerInfo(
+data class WholesalerInfo(
     val id: String = "",
     val name: String = "",
     val address1: String = "",
@@ -33,39 +33,39 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val repo    = SettingsRepository(app)
     private val baseUrl = "https://test-strip-marketplace-default-rtdb.firebaseio.com"
 
-    // ─── LIVE BUYERS ─────────────────────────────
-    private val _buyerList = MutableStateFlow<List<BuyerInfo>>(emptyList())
-    val buyerList: StateFlow<List<BuyerInfo>> = _buyerList.asStateFlow()
+    // ─── LIVE WHOLESALERS ─────────────────────────────
+    private val _wholesalerList = MutableStateFlow<List<WholesalerInfo>>(emptyList())
+    val wholesalerList: StateFlow<List<WholesalerInfo>> = _wholesalerList.asStateFlow()
 
     // ─── LIVE CATEGORIES ─────────────────────────────
     private val _categoryList = MutableStateFlow<List<String>>(emptyList())
     val categoryList: StateFlow<List<String>> = _categoryList.asStateFlow()
 
     init {
-        // initial load of both buyers and categories
+        // initial load of both wholesalers and categories
         viewModelScope.launch {
-            loadBuyers()
+            loadWholesalers()
             loadCategories()
         }
     }
 
-    /** Public API to re-pull the buyers list on demand */
-    fun refreshBuyers() {
-        viewModelScope.launch { loadBuyers() }
+    /** Public API to re-pull the wholesalers list on demand */
+    fun refreshWholesalers() {
+        viewModelScope.launch { loadWholesalers() }
     }
 
-    private suspend fun loadBuyers() {
-        Log.d(TAG, "🔍 Fetching buyers from $baseUrl/buyers.json")
+    private suspend fun loadWholesalers() {
+        Log.d(TAG, "🔍 Fetching wholesalers from $baseUrl/wholesalers.json")
         try {
             val jsonText = withContext(Dispatchers.IO) {
-                (URL("$baseUrl/buyers.json").openConnection() as HttpURLConnection).run {
+                (URL("$baseUrl/wholesalers.json").openConnection() as HttpURLConnection).run {
                     inputStream.bufferedReader().use { it.readText() }
                 }
             }
             val root = JSONObject(jsonText)
             val list = root.keys().asSequence().map { id ->
                 root.getJSONObject(id).let { obj ->
-                    BuyerInfo(
+                    WholesalerInfo(
                         id       = id,
                         name     = obj.optString("name", "<no-name>"),
                         address1 = obj.optString("address", ""),
@@ -77,10 +77,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
             }.toList()
-            _buyerList.value = list
-            Log.d(TAG, "✅ Loaded ${list.size} buyers")
+            _wholesalerList.value = list
+            Log.d(TAG, "✅ Loaded ${list.size} wholesalers")
         } catch (th: Throwable) {
-            Log.e(TAG, "❌ Failed fetching buyers", th)
+            Log.e(TAG, "❌ Failed fetching wholesalers", th)
         }
     }
 
@@ -127,8 +127,8 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             )
         )
 
-    val selectedBuyersMap: StateFlow<Map<String,String?>> =
-        repo.selectedBuyersMapFlow
+    val selectedWholesalersMap: StateFlow<Map<String,String?>> =
+        repo.selectedWholesalersMapFlow
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     fun updateProfile(new: SellerInfo) {

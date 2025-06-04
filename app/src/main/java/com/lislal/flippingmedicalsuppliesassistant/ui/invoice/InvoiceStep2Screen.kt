@@ -41,13 +41,13 @@ fun InvoiceStep2Screen(
             word.lowercase(locale).replaceFirstChar { it.uppercase(locale) }
         }
 
-    // 1) Pull live buyer list from RTDB
-    val buyers by settingsViewModel.buyerList.collectAsState()
-    val buyerOptions = remember(buyers) {
-        listOf("Select Existing Buyer") + buyers.map { it.name }
+    // 1) Pull live wholesaler list from RTDB
+    val wholesalers by settingsViewModel.wholesalerList.collectAsState()
+    val wholesalerOptions = remember(wholesalers) {
+        listOf("Select Existing Wholesaler") + wholesalers.map { it.name }
     }
-    var buyerExpanded by rememberSaveable { mutableStateOf(false) }
-    var selectedBuyer by rememberSaveable { mutableStateOf(buyerOptions[0]) }
+    var wholesalerExpanded by rememberSaveable { mutableStateOf(false) }
+    var selectedWholesaler by rememberSaveable { mutableStateOf(wholesalerOptions[0]) }
 
     // 2) Form fields
     var clientName     by rememberSaveable { mutableStateOf(initial?.clientName ?: "") }
@@ -80,32 +80,32 @@ fun InvoiceStep2Screen(
     ) {
         Text("Step 2: Invoice Details", style = MaterialTheme.typography.titleLarge)
 
-        // ── Buyer spinner ──
+        // ── Wholesaler spinner ──
         ExposedDropdownMenuBox(
-            expanded = buyerExpanded,
-            onExpandedChange = { buyerExpanded = it }
+            expanded = wholesalerExpanded,
+            onExpandedChange = { wholesalerExpanded = it }
         ) {
             TextField(
-                value = selectedBuyer,
+                value = selectedWholesaler,
                 onValueChange = {},
                 readOnly = true,
                 singleLine = true,
-                label = { Text("Existing Buyer") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(buyerExpanded) },
+                label = { Text("Existing Wholesaler") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(wholesalerExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
-                expanded = buyerExpanded,
-                onDismissRequest = { buyerExpanded = false }
+                expanded = wholesalerExpanded,
+                onDismissRequest = { wholesalerExpanded = false }
             ) {
-                buyerOptions.forEachIndexed { index, opt ->
+                wholesalerOptions.forEachIndexed { index, opt ->
                     DropdownMenuItem(
                         text = { Text(opt) },
                         onClick = {
-                            selectedBuyer = opt
-                            buyerExpanded = false
+                            selectedWholesaler = opt
+                            wholesalerExpanded = false
                             if (index == 0) {
                                 // Manual entry
                                 clientName = ""
@@ -115,8 +115,8 @@ fun InvoiceStep2Screen(
                                 clientState = ""
                                 clientZip = ""
                             } else {
-                                // Populate from RTDB buyer info
-                                val info = buyers[index - 1]
+                                // Populate from RTDB wholesaler info
+                                val info = wholesalers[index - 1]
                                 clientName     = info.name
                                 clientAddress1 = info.address1
                                 clientAddress2 = info.address2.orEmpty()

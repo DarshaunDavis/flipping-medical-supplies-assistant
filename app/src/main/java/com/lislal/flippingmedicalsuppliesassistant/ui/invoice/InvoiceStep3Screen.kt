@@ -37,7 +37,7 @@ fun InvoiceStep3Screen(
     val context = LocalContext.current
     val repo = remember { HomeRepository() }
 
-    val selectedBuyersMap by settingsViewModel.selectedBuyersMap.collectAsState()
+    val selectedWholesalersMap by settingsViewModel.selectedWholesalersMap.collectAsState()
 
     val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
     var catExpanded   by rememberSaveable { mutableStateOf(false) }
@@ -58,8 +58,8 @@ fun InvoiceStep3Screen(
     var rawHistory by remember { mutableStateOf<PriceHistory?>(null) }
     LaunchedEffect(selectedCat, selectedProd) {
         if (selectedCat != null && selectedProd != null) {
-            val buyerKey = selectedBuyersMap[selectedCat].orEmpty()
-            rawHistory = repo.getPriceHistory(selectedCat!!, selectedProd!!.barcode, buyerKey)
+            val wholesalerKey = selectedWholesalersMap[selectedCat].orEmpty()
+            rawHistory = repo.getPriceHistory(selectedCat!!, selectedProd!!.barcode, wholesalerKey)
             expDate = null
             selectedCondition = null
         } else {

@@ -25,12 +25,12 @@ fun ProductsTab(
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
     // 1) Raw maps from your view models
-    val buyersByCategory by homeViewModel.buyersByCategory.collectAsState(initial = emptyMap())
+    val wholesalersByCategory by homeViewModel.wholesalersByCategory.collectAsState(initial = emptyMap())
     val visibilityMap    by adminViewModel.visibility.collectAsState(initial = emptyMap())
-    val selectedBuyerMap by homeViewModel.selectedBuyerMap.collectAsState(initial = emptyMap())
+    val selectedWholesalerMap by homeViewModel.selectedWholesalerMap.collectAsState(initial = emptyMap())
 
-    // 2) Flat list of all valid buyer names
-    val validBuyerNames by settingsViewModel.buyerList
+    // 2) Flat list of all valid wholesaler names
+    val validWholesalerNames by settingsViewModel.wholesalerList
         .map { list -> list.map { it.name } }
         .collectAsState(initial = emptyList())
 
@@ -45,15 +45,15 @@ fun ProductsTab(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         categories.forEach { category ->
-            // 3️⃣ Raw buyer‐keys under this category
-            val rawBuyers = buyersByCategory[category].orEmpty()
-            // 4️⃣ Keep only those that exist in /buyers.json
-            val filteredBuyers = rawBuyers.filter { it in validBuyerNames }
+            // 3️⃣ Raw wholesaler‐keys under this category
+            val rawWholesalers = wholesalersByCategory[category].orEmpty()
+            // 4️⃣ Keep only those that exist in /wholesalers.json
+            val filteredWholesalers = rawWholesalers.filter { it in validWholesalerNames }
 
-            // 5️⃣ Sort and display all buyers for this category
-            val buyersForUi = filteredBuyers.sorted()
+            // 5️⃣ Sort and display all wholesalers for this category
+            val wholesalersForUi = filteredWholesalers.sorted()
 
-            val hasBuyers = buyersForUi.isNotEmpty()
+            val hasWholesalers = wholesalersForUi.isNotEmpty()
             val visible   = visibilityMap[category] ?: false
 
             Card(
@@ -75,7 +75,7 @@ fun ProductsTab(
                         Switch(
                             checked = visible,
                             onCheckedChange = { adminViewModel.setVisibility(category, it) },
-                            enabled = hasBuyers
+                            enabled = hasWholesalers
                         )
                     }
 
@@ -85,19 +85,19 @@ fun ProductsTab(
                         style = MaterialTheme.typography.bodySmall
                     )
 
-                    // ── Buyer dropdown ──
+                    // ── Wholesaler dropdown ──
                     ExposedDropdownMenuBox(
                         expanded = expandedCategory == category,
                         onExpandedChange = { expand ->
-                            if (expand) settingsViewModel.refreshBuyers()
+                            if (expand) settingsViewModel.refreshWholesalers()
                             expandedCategory = if (expand) category else null
                         }
                     ) {
                         TextField(
-                            value         = selectedBuyerMap[category]?.takeIf { it in buyersForUi }.orEmpty(),
+                            value         = selectedWholesalerMap[category]?.takeIf { it in wholesalersForUi }.orEmpty(),
                             onValueChange = {},
                             readOnly      = true,
-                            placeholder   = { Text(if (!hasBuyers) "No buyer available" else "Select Buyer") },
+                            placeholder   = { Text(if (!hasWholesalers) "No wholesaler available" else "Select Wholesaler") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedCategory == category) },
                             modifier      = Modifier
                                 .fillMaxWidth()
@@ -108,24 +108,24 @@ fun ProductsTab(
                             expanded = expandedCategory == category,
                             onDismissRequest = { expandedCategory = null }
                         ) {
-                            if (!hasBuyers) {
+                            if (!hasWholesalers) {
                                 DropdownMenuItem(
-                                    text    = { Text("No buyer available") },
+                                    text    = { Text("No wholesaler available") },
                                     onClick = { },
                                     enabled = false
                                 )
                             } else {
                                 // Disabled header prompt
                                 DropdownMenuItem(
-                                    text    = { Text("Select Buyer") },
+                                    text    = { Text("Select Wholesaler") },
                                     onClick = { /* no-op */ },
                                     enabled = false
                                 )
-                                buyersForUi.forEach { buyerName ->
+                                wholesalersForUi.forEach { wholesalerName ->
                                     DropdownMenuItem(
-                                        text = { Text(buyerName) },
+                                        text = { Text(wholesalerName) },
                                         onClick = {
-                                            homeViewModel.setSelectedBuyer(category, buyerName)
+                                            homeViewModel.setSelectedWholesaler(category, wholesalerName)
                                             expandedCategory = null
                                         }
                                     )
@@ -134,9 +134,9 @@ fun ProductsTab(
                         }
                     }
 
-                    // ── Currently selected buyer ──
+                    // ── Currently selected wholesaler ──
                     Text(
-                        text = "Using: ${selectedBuyerMap[category] ?: "—"}",
+                        text = "Using: ${selectedWholesalerMap[category] ?: "—"}",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }

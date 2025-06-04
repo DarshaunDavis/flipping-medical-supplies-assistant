@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 
-// Use a single DataStore for both profile and buyer selections
+// Use a single DataStore for both profile and wholesaler selections
 private const val SETTINGS_NAME = "settings_prefs"
 private val Context.settingsStore by preferencesDataStore(name = SETTINGS_NAME)
 
@@ -60,15 +60,15 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    // ─── Buyer-selection keys ────────────────────────────────────────────
-    private val buyerKeyPrefix = "selected_buyer_"
+    // ─── Wholesaler-selection keys ────────────────────────────────────────────
+    private val wholesalerKeyPrefix = "selected_wholesaler_"
     private val categories = listOf("Test Strips", "Devices", "Inhalers", "Insulin")
 
     /**
-     * Flow that emits a Map<Category, SelectedBuyer?>
-     * reading keys like "selected_buyer_Test_Strips" from DataStore
+     * Flow that emits a Map<Category, SelectedWholesaler?>
+     * reading keys like "selected_wholesaler_Test_Strips" from DataStore
      */
-    val selectedBuyersMapFlow: Flow<Map<String, String?>> =
+    val selectedWholesalersMapFlow: Flow<Map<String, String?>> =
         context.settingsStore.data
             .catch { e ->
                 if (e is IOException) emit(emptyPreferences())
@@ -77,21 +77,21 @@ class SettingsRepository(private val context: Context) {
             .map { prefs ->
                 categories.associateWith { category ->
                     prefs[stringPreferencesKey(
-                        "$buyerKeyPrefix${category.replace(" ", "_")}"
+                        "$wholesalerKeyPrefix${category.replace(" ", "_")}"
                     )]
                 }
             }
 
     /**
      * Persist a single selection.
-     * If `buyer` is null, removes that preference key.
+     * If `wholesaler` is null, removes that preference key.
      */
-    suspend fun saveSelectedBuyer(category: String, buyer: String?) {
+    suspend fun saveSelectedWholesaler(category: String, wholesaler: String?) {
         val key = stringPreferencesKey(
-            "$buyerKeyPrefix${category.replace(" ", "_")}"
+            "$wholesalerKeyPrefix${category.replace(" ", "_")}"
         )
         context.settingsStore.edit { prefs ->
-            if (buyer != null) prefs[key] = buyer
+            if (wholesaler != null) prefs[key] = wholesaler
             else prefs.remove(key)
         }
     }

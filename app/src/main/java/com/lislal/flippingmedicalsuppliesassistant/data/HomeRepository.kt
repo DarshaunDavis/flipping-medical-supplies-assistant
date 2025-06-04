@@ -16,12 +16,12 @@ class HomeRepository {
     private val baseUrl = "https://test-strip-marketplace-default-rtdb.firebaseio.com"
 
     /**
-     * Emits a map: category → ( buyer → list of barcodes )
+     * Emits a map: category → ( wholesaler → list of barcodes )
      *
      * NEW SCHEMA: all products now under /products.json, each with a
-     * `prices` child whose keys are buyer names.
+     * `prices` child whose keys are wholesaler names.
      */
-    fun getBarcodesByCategoryAndBuyer(): Flow<Map<String, Map<String, List<String>>>> =
+    fun getBarcodesByCategoryAndWholesaler(): Flow<Map<String, Map<String, List<String>>>> =
         callbackFlow {
             try {
                 // ▶ fetch /products.json instead of /barcodes.json
@@ -38,21 +38,21 @@ class HomeRepository {
                     val prodObj = root.getJSONObject(barcode)
                     val category = prodObj.optString("category", "")
                     if (category.isNotBlank()) {
-                        val buyerMap = result.getOrPut(category) { mutableMapOf() }
-                        // iterate over each buyer under this product’s `prices` child
+                        val wholesalerMap = result.getOrPut(category) { mutableMapOf() }
+                        // iterate over each wholesaler under this product’s `prices` child
                         prodObj.optJSONObject("prices")
                             ?.keys()
-                            ?.forEach { buyer ->
-                                buyerMap
-                                    .getOrPut(buyer) { mutableListOf() }
+                            ?.forEach { wholesaler ->
+                                wholesalerMap
+                                    .getOrPut(wholesaler) { mutableListOf() }
                                     .add(barcode)
                             }
                     }
                 }
 
                 // freeze to immutable
-                val immutable = result.mapValues { (_, buyers) ->
-                    buyers.mapValues { it.value.toList() }
+                val immutable = result.mapValues { (_, wholesalers) ->
+                    wholesalers.mapValues { it.value.toList() }
                 }
 
                 trySend(immutable)
@@ -95,17 +95,17 @@ class HomeRepository {
     }
 
     /**
-     * Fetches a product’s last‐updated date and the last 10 monthly prices for a *specific* buyer.
-     * Now reads from /products/{barcode}/prices/{buyer}.json.
+     * Fetches a product’s last‐updated date and the last 10 monthly prices for a *specific* wholesaler.
+     * Now reads from /products/{barcode}/prices/{wholesaler}.json.
      */
     suspend fun getPriceHistory(
         category: String,
         barcode: String,
-        buyer: String
+        wholesaler: String
     ): PriceHistory = withContext(Dispatchers.IO) {
         val catEnc   = category.replace(" ", "%20")
         val codeEnc  = barcode.replace(" ", "%20")
-        val buyerEnc = buyer.replace(" ", "%20")
+        val wholesalerEnc = wholesaler.replace(" ", "%20")
 
         // 1️⃣ last‐updated unchanged
         val lastUpdated = try {
@@ -117,9 +117,9 @@ class HomeRepository {
             SimpleDateFormat("M/d/yyyy", Locale.US).format(Date())
         }
 
-        // 2️⃣ fetch that buyer’s 10‐month price map
+        // 2️⃣ fetch that wholesaler’s 10‐month price map
         val prices = try {
-            val pu = "$baseUrl/products/$codeEnc/prices/$buyerEnc.json"
+            val pu = "$baseUrl/products/$codeEnc/prices/$wholesalerEnc.json"
             val raw = (URL(pu).openConnection() as HttpURLConnection).run {
                 inputStream.bufferedReader().use { it.readText().trim() }
             }

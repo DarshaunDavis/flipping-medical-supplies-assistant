@@ -1,3 +1,4 @@
+// app/src/main/java/com/lislal/flippingmedicalsuppliesassistant/ui/components/TrialReminderBanner.kt
 package com.lislal.flippingmedicalsuppliesassistant.ui.components
 
 import androidx.compose.foundation.clickable
@@ -16,12 +17,14 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 /**
- * Shows a “paginated” reminder banner during trial:
- *  • Once at 7d (represented by 4 minutes)
- *  • Once at 14d (3 minutes) and 21d (2 minutes)
- *  • Then daily for the final 1 minute (1 minute)
+ * Shows a “paginated” reminder banner during a 30-day trial:
+ *  • Once at 7 days before expiry (i.e. day 23 of trial) — green
+ *  • Once at 14 days before expiry (i.e. day 16 of trial) — yellow
+ *  • Once at 21 days before expiry (i.e. day 9 of trial) — yellow
+ *  • Daily for the final 7 days (days 7..1) — red
  *
- * For testing, this uses a 5-minute trial. Swap back to 30 minutes (30 days) for production.
+ * @param trialStart ms since epoch when trial began
+ * @param onUpgradeClick lambda invoked when user taps “Upgrade”
  */
 @Composable
 fun TrialReminderBanner(
@@ -30,11 +33,11 @@ fun TrialReminderBanner(
 ) {
     if (trialStart == null) return
 
-    // For testing: 5 minutes total (represents 5 days). In production, use 30L * 24*60*60*1000
-    val windowMs = 5L * 60_000L
-    val cutoff = remember(trialStart) { trialStart + windowMs }
+    // 1) 30-day window in ms:
+    val windowMs = 30L * 24 * 60 * 60 * 1000
+    val cutoff   = remember(trialStart) { trialStart + windowMs }
 
-    // Track “now” each minute
+    // 2) Track “now” each minute (we only care about day‐level granularity)
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(cutoff) {
         while (true) {
@@ -43,25 +46,25 @@ fun TrialReminderBanner(
         }
     }
 
-    // Minutes left in trial (≥ 0)
-    val minutesLeft = ((cutoff - now).coerceAtLeast(0L) / 60_000L)
+    // 3) Days left in trial (coerced ≥ 0)
+    val daysLeft = ((cutoff - now).coerceAtLeast(0L) / (24 * 60 * 60 * 1000L))
 
-    // Only show banner at our key “minute” marks:
-    val showBanner = when (minutesLeft) {
-        4L,       // 1 day before (7d stand-in)
-        3L, 2L,   // 2 and 3 days before (14d & 21d stand-in)
-        1L        // final day (1 minute stand-in)
+    // 4) Only show banner at our key “daysLeft” marks:
+    val showBanner = when (daysLeft) {
+        23L,               // 7 days before expiry (i.e. day #23 → 30 - 7 = 23)
+        16L, 9L,           // 14 & 21 days before expiry (i.e. day #16 and #9)
+        in 7L downTo 1L    // final 7 days
             -> true
-        else   -> false
+        else -> false
     }
     if (!showBanner) return
 
-    // Traffic-light background colors
-    val backgroundColor = when (minutesLeft) {
-        4L          -> Color(0xFF2E7D32) // dark green
-        in 3L..2L   -> Color(0xFFF9A825) // dark yellow
-        1L          -> Color(0xFFC62828) // dark red
-        else        -> MaterialTheme.colorScheme.primary
+    // 5) Traffic‐light background colors:
+    val backgroundColor = when (daysLeft) {
+        23L                  -> Color(0xFF2E7D32) // dark green
+        16L, 9L              -> Color(0xFFF9A825) // dark yellow
+        in 7L downTo 1L      -> Color(0xFFC62828) // dark red
+        else                 -> MaterialTheme.colorScheme.primary
     }
 
     Surface(
@@ -78,10 +81,10 @@ fun TrialReminderBanner(
                 .clickable(onClick = onUpgradeClick)
                 .padding(16.dp)
         ) {
-            val message = if (minutesLeft > 1L) {
-                "⏳ $minutesLeft minutes left in your free trial!"
+            val message = if (daysLeft > 1L) {
+                "⏳ $daysLeft days left in your free trial!"
             } else {
-                "⚠️ $minutesLeft minute left – trial ends soon!"
+                "⚠️ $daysLeft day left – trial ends soon!"
             }
 
             Row(

@@ -1,3 +1,4 @@
+// app/src/main/java/com/lislal/flippingmedicalsuppliesassistant/ui/navigation/AppNavHost.kt
 package com.lislal.flippingmedicalsuppliesassistant.ui.navigation
 
 import android.app.Activity
@@ -41,7 +42,8 @@ import java.util.Calendar
 @Composable
 private fun ThemedAppLogo(modifier: Modifier = Modifier) {
     val logoRes =
-        if (isSystemInDarkTheme()) R.drawable.fmsadarklogo else R.drawable.fmsalightlogo
+        if (isSystemInDarkTheme()) R.drawable.fmsadarklogo
+        else                                  R.drawable.fmsalightlogo
     Image(
         painter           = painterResource(logoRes),
         contentDescription= null,
@@ -55,7 +57,7 @@ fun AppNavHost() {
     val activity      = context as? Activity
     val navController = rememberNavController()
 
-    // Double-back to exit
+    // ── Double‐back to exit ──────────────────────────────────
     var lastBackPressTime by remember { mutableLongStateOf(0L) }
     BackHandler {
         if (navController.previousBackStackEntry != null) {
@@ -71,24 +73,24 @@ fun AppNavHost() {
         }
     }
 
-    // ── Auth + Role + Trial from AuthViewModel ──
-    val authVm: AuthViewModel      = viewModel()
+    // ── Auth + Role + Trial from AuthViewModel ──────────────
+    val authVm      : AuthViewModel      = viewModel()
     val firebaseUser by authVm.user.collectAsState()
     val dbProfile    by authVm.profileInfo.collectAsState()
     val role         by authVm.role.collectAsState()
     val trialStart   by authVm.trialStart.collectAsState()
 
-    // Local flag driven by the countdown’s onActiveChanged callback:
+    // Local flag driven by TrialCountdown’s onActiveChanged callback:
     var isTrialActiveLocal by remember { mutableStateOf(false) }
 
-    // ── Products & PriceHistory ──
+    // ── Products & PriceHistory ────────────────────────────
     val homeVm          : HomeViewModel = viewModel()
     val query           by homeVm.query.collectAsState()
     val products        by homeVm.filteredProducts.collectAsState()
     val ph              by homeVm.priceHistory.collectAsState()
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
-    // ── Greeting data ──
+    // ── Greeting data ──────────────────────────────────────
     val rawName = dbProfile?.name.takeIf { it?.isNotBlank() == true }
         ?: firebaseUser?.displayName.orEmpty()
     val showingGreeting = rawName.isNotBlank()
@@ -120,13 +122,13 @@ fun AppNavHost() {
                 .padding(innerPadding),
             verticalArrangement = Arrangement.Top
         ) {
-            // ── Header Row ──
+            // ── Header Row ────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
             ) {
-                // Left: Greeting & debug flag
+                // Left: Greeting only (no debug text)
                 if (showingGreeting) {
                     Column(
                         modifier = Modifier
@@ -135,13 +137,6 @@ fun AppNavHost() {
                     ) {
                         Text(greetingWord, style = MaterialTheme.typography.bodyLarge)
                         Text("$greetingRest,\n$rawName!", style = MaterialTheme.typography.bodyLarge)
-                        // DEBUG: show trial flag
-                        Text(
-                            text  = "Trial active? $isTrialActiveLocal",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .6f)
-                            )
-                        )
                     }
                 }
 
@@ -153,8 +148,7 @@ fun AppNavHost() {
                     ThemedAppLogo(Modifier.size(120.dp))
                     Spacer(Modifier.height(8.dp))
 
-                    // Always compose the countdown if trialStart != null,
-                    // even if the timer has expired.
+                    // Always compose the countdown if trialStart != null
                     if (trialStart != null) {
                         TrialCountdown(
                             trialStart      = trialStart,
@@ -171,7 +165,9 @@ fun AppNavHost() {
                 // Right: Login / Logout
                 Text(
                     text    = if (firebaseUser == null) "Login" else "Logout",
-                    style   = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary),
+                    style   = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.primary
+                    ),
                     modifier= Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = 16.dp)
@@ -182,7 +178,7 @@ fun AppNavHost() {
                 )
             }
 
-            // ── Auth dialogs ──
+            // ── Authentication Dialogs ────────────────────────
             if (showLogin) {
                 LoginDialog(
                     authViewModel   = authVm,
@@ -200,7 +196,7 @@ fun AppNavHost() {
                 )
             }
 
-            // ── Trial Reminder Banner ──
+            // ── Trial Reminder Banner ─────────────────────────
             // Only show the banner while the trial is active
             if (isTrialActiveLocal) {
                 TrialReminderBanner(
@@ -209,7 +205,7 @@ fun AppNavHost() {
                 )
             }
 
-            // ── Main Navigation ──
+            // ── Main Navigation Host ─────────────────────────
             Box(modifier = Modifier.weight(1f)) {
                 NavHost(
                     navController    = navController,
@@ -226,7 +222,7 @@ fun AppNavHost() {
                                 selectedProduct = prod
                             }
                         )
-                        // Price-history dialog
+                        // Price‐history dialog
                         selectedProduct
                             ?.takeIf { ph != null }
                             ?.let { prod ->
@@ -243,9 +239,9 @@ fun AppNavHost() {
                                 )
                             }
                     }
-                    composable("scan")        { ScanScreen() }
-                    composable("invoice")     { InvoiceScreen() }
-                    composable("admin")       {
+                    composable("scan")     { ScanScreen() }
+                    composable("invoice")  { InvoiceScreen() }
+                    composable("admin")    {
                         AdminScreen(
                             homeViewModel  = homeVm,
                             currentRole    = role,
@@ -258,7 +254,7 @@ fun AppNavHost() {
                 }
             }
 
-            // ── Banner Ad ──
+            // ── Google Ad Banner ─────────────────────────────
             BannerAd(
                 modifier = Modifier
                     .fillMaxWidth()

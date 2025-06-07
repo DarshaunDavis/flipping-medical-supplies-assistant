@@ -7,7 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.lislal.flippingmedicalsuppliesassistant.data.SettingsRepository
 import com.lislal.flippingmedicalsuppliesassistant.ui.invoice.SellerInfo
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -35,11 +38,11 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     // ─── LIVE WHOLESALERS ─────────────────────────────
     private val _wholesalerList = MutableStateFlow<List<WholesalerInfo>>(emptyList())
-    val wholesalerList: StateFlow<List<WholesalerInfo>> = _wholesalerList.asStateFlow()
+    val wholesalerList: StateFlow<List<WholesalerInfo>> = _wholesalerList
 
     // ─── LIVE CATEGORIES ─────────────────────────────
     private val _categoryList = MutableStateFlow<List<String>>(emptyList())
-    val categoryList: StateFlow<List<String>> = _categoryList.asStateFlow()
+    val categoryList: StateFlow<List<String>> = _categoryList
 
     init {
         // initial load of both wholesalers and categories
@@ -69,8 +72,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
                         id       = id,
                         name     = obj.optString("name", "<no-name>"),
                         address1 = obj.optString("address", ""),
-                        address2 = obj.optString("suite", null.toString())
-                            .takeIf { it.isNotBlank() },
+                        address2 = obj.optString("suite", null.toString()).takeIf { it.isNotBlank() },
                         city     = obj.optString("city", ""),
                         state    = obj.optString("state", ""),
                         zip      = obj.optString("zip", obj.optString("zipCode", ""))
@@ -98,7 +100,8 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             val root = JSONObject(jsonText)
-            val list = root.keys().asSequence()
+            val list = root.keys()
+                .asSequence()
                 .filter { key -> root.optBoolean(key, false) }
                 .sorted()
                 .toList()
@@ -127,10 +130,16 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             )
         )
 
-    val selectedWholesalersMap: StateFlow<Map<String,String?>> =
+    // ─── SELECTED WHOLESALERS MAP ─────────────────────────────────
+    val selectedWholesalersMap: StateFlow<Map<String, String?>> =
         repo.selectedWholesalersMapFlow
-            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+            .stateIn(
+                scope        = viewModelScope,
+                started      = SharingStarted.Eagerly,
+                initialValue = emptyMap()
+            )
 
+    /** Update seller profile via DataStore */
     fun updateProfile(new: SellerInfo) {
         viewModelScope.launch { repo.saveProfile(new) }
     }

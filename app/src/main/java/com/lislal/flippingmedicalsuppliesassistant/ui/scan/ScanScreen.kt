@@ -2,7 +2,6 @@ package com.lislal.flippingmedicalsuppliesassistant.ui.scan
 
 import android.app.DatePickerDialog
 import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +25,12 @@ import com.lislal.flippingmedicalsuppliesassistant.data.Product
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
+import android.widget.Toast
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +72,19 @@ fun ScanScreen() {
         lifecycleOwner.lifecycle.addObserver(obs)
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
+
+    // ── PERMISSION LAUNCHER ─────────────────────
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            if (granted) {
+                isScanning = true
+            } else {
+                // you can show a Snackbar or Toast
+                Toast.makeText(context, "Camera permission required", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
 
     // scan callback
     val callback = remember {
@@ -147,7 +165,6 @@ fun ScanScreen() {
         AndroidView(
             factory = { ctx ->
                 DecoratedBarcodeView(ctx).apply {
-                    initializeFromIntent(Intent())
                     decodeContinuous(callback)
                     resume()
                     barcodeView = this
@@ -164,9 +181,18 @@ fun ScanScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Button(onClick = {
-                scannedCode = null
-                matchedProduct = null
-                isScanning = true
+                when (PackageManager.PERMISSION_GRANTED) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) -> {
+                        // Already have permission
+                        isScanning = true
+                        scannedCode = null
+                        matchedProduct = null
+                    }
+                    else -> {
+                        // Request permission
+                        cameraLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
             }) {
                 Text(if (scannedCode == null) "Scan Barcode" else "Scan Again")
             }

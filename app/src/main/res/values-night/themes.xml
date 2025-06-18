@@ -1,29 +1,27 @@
 <resources>
-    <!-- Your app’s default dark theme -->
-    <style name="Theme.FlippingMedicalSuppliesAssistant"
-        parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Brand colors (contrast-swapped as before) -->
-        <item name="colorPrimary">#72B8E0</item>
-        <item name="colorPrimaryVariant">#4A9AC2</item>
-        <item name="colorSecondary">#1E4A78</item>
-        <item name="colorError">#FF3B3B</item>
+    <!-- Dark theme using MaterialComponents -->
+    <style name="Theme.FlippingMedicalSuppliesAssistant" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Swapped brand colors -->
+        <item name="colorPrimary">#CCE8E5</item>
+        <item name="colorOnPrimary">#002F31</item>
+        <item name="colorPrimaryVariant">#004D51</item>
 
-        <!-- Window background now matches your dark-logo bg (#072847) -->
+        <item name="colorSecondary">#FFDCE1</item>
+        <item name="colorOnSecondary">#3B0018</item>
+        <item name="colorSecondaryVariant">#A12448</item>
+
+        <!-- Background & surfaces -->
         <item name="android:windowBackground">#072847</item>
-
-        <!-- Surfaces (cards, dialogs) -->
         <item name="colorSurface">#112240</item>
-
-        <!-- On-colors -->
-        <item name="colorOnPrimary">#0A1B33</item>
-        <item name="colorOnSecondary">#FFFFFF</item>
         <item name="colorOnSurface">#E0E6F0</item>
-        <item name="colorOnError">#0A1B33</item>
+
+        <!-- Error state -->
+        <item name="colorError">#CF6679</item>
+        <item name="colorOnError">#000000</item>
     </style>
 
-    <!-- Dark splash (optional) -->
-    <style name="Theme.FlippingSplash"
-        parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- Dark splash -->
+    <style name="Theme.FlippingSplash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:windowDisablePreview">true</item>
         <item name="android:windowBackground">#072847</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/lislal_logo</item>

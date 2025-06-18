@@ -1,32 +1,28 @@
 <resources>
-    <!-- Your app’s default theme -->
-    <style name="Theme.FlippingMedicalSuppliesAssistant"
-        parent="android:Theme.Material.Light.NoActionBar">
-        <!-- Brand colors -->
-        <item name="colorPrimary">#1E4A78</item>
-        <item name="colorPrimaryVariant">#15375A</item>
-        <item name="colorSecondary">#72B8E0</item>
-        <item name="colorError">#FF3B3B</item>
-
-        <!-- Window background now matches your light-logo bg (#FEFEFE) -->
-        <item name="android:windowBackground">#FEFEFE</item>
-
-        <!-- Surfaces (cards, dialogs) -->
-        <item name="colorSurface">#FFFFFF</item>
-
-        <!-- On-colors -->
+    <!-- Light theme using MaterialComponents -->
+    <style name="Theme.FlippingMedicalSuppliesAssistant" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- Core brand colors -->
+        <item name="colorPrimary">#006D77</item>
         <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorOnSecondary">#1E4A78</item>
+        <item name="colorPrimaryVariant">#004D51</item>
+
+        <item name="colorSecondary">#EF476F</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryVariant">#A12448</item>
+
+        <!-- Background & surfaces -->
+        <item name="android:windowBackground">#FEFEFE</item>
+        <item name="colorSurface">#FFFFFF</item>
         <item name="colorOnSurface">#222222</item>
+
+        <!-- Error state -->
+        <item name="colorError">#B00020</item>
         <item name="colorOnError">#FFFFFF</item>
     </style>
 
-    <!-- Splash theme -->
-    <style name="Theme.FlippingSplash"
-        parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- remove default snapshot -->
+    <!-- Splash inherits the same base -->
+    <style name="Theme.FlippingSplash" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="android:windowDisablePreview">true</item>
-        <!-- match light-mode bg too -->
         <item name="android:windowBackground">#FEFEFE</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/lislal_logo</item>
         <item name="windowSplashScreenBackground">#FEFEFE</item>

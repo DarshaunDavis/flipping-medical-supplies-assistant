@@ -18,32 +18,28 @@ class AuthViewModel : ViewModel() {
     private val auth  = FirebaseAuth.getInstance()
     private val dbRef = Firebase.database.reference.child("users")
 
-    // FirebaseUser flow
     private val _user = MutableStateFlow(auth.currentUser)
     val user: StateFlow<FirebaseUser?> = _user.asStateFlow()
 
-    // UserRole flow
     private val _role = MutableStateFlow(UserRole.Guest)
     val role: StateFlow<UserRole> = _role.asStateFlow()
 
-    // Trial start timestamp (ms since epoch)
     private val _trialStart = MutableStateFlow<Long?>(null)
     val trialStart: StateFlow<Long?> = _trialStart.asStateFlow()
 
-    // Derived flag: is trial still active?
-    // In this “reverted” version, you can check if you’d like,
-    // but the AppNavHost is using the countdown’s onActiveChanged instead.
     val isTrialActive: StateFlow<Boolean> = trialStart
         .map { ts ->
             ts?.let {
-                // 5-minute trial for testing (swap back to 30L * 24*60*60*1000 for production)
-                val cutoff = it + 5L * 60_000L
+                val cutoff = it + 5L * 60_000L // 5 minutes
                 System.currentTimeMillis() <= cutoff
             } ?: false
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    // SellerInfo flow
+    val hasFullAccess: StateFlow<Boolean> = combine(role, isTrialActive) { r, trial ->
+        r == UserRole.Subscriber || r == UserRole.Admin || trial
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     private val _profileInfo = MutableStateFlow<SellerInfo?>(null)
     val profileInfo: StateFlow<SellerInfo?> = _profileInfo.asStateFlow()
 
@@ -52,12 +48,10 @@ class AuthViewModel : ViewModel() {
             val u = firebaseAuth.currentUser
             _user.value = u
             if (u == null) {
-                // signed out
                 _role.value = UserRole.Guest
                 _trialStart.value = null
                 _profileInfo.value = null
             } else {
-                // load role
                 dbRef.child(u.uid).child("role")
                     .addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
@@ -65,29 +59,44 @@ class AuthViewModel : ViewModel() {
                                 ?.let { UserRole.valueOf(it) }
                                 ?: UserRole.User
                         }
+
                         override fun onCancelled(error: DatabaseError) {
                             _role.value = UserRole.User
                         }
                     })
 
-                // load trialStart timestamp
                 dbRef.child(u.uid).child("trialStart")
                     .addValueEventListener(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
                             _trialStart.value = snapshot.getValue(Long::class.java)
                         }
-                        override fun onCancelled(error: DatabaseError) {
-                            // no-op
-                        }
+
+                        override fun onCancelled(error: DatabaseError) {}
                     })
 
-                // load profile details
                 listenForProfile(u.uid)
+            }
+        }
+
+        viewModelScope.launch {
+            hasFullAccess.collect { _ -> }
+        }
+
+        // ✅ Auto downgrade trial users after trial ends
+        viewModelScope.launch {
+            combine(role, isTrialActive) { r, active ->
+                r to active
+            }.collect { (r, active) ->
+                if (r == UserRole.Trial && !active) {
+                    auth.currentUser?.uid?.let { uid ->
+                        dbRef.child(uid).child("role").setValue(UserRole.User.name)
+                            .addOnSuccessListener { _role.value = UserRole.User }
+                    }
+                }
             }
         }
     }
 
-    /** Sign in existing user */
     fun signIn(
         email: String,
         password: String,
@@ -110,7 +119,6 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /** Register new user with trialStart and default 'User' role */
     fun register(
         name: String,
         email: String,
@@ -125,24 +133,21 @@ class AuthViewModel : ViewModel() {
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener {
                     val u = auth.currentUser!!
-                    // update Auth displayName
                     val profileUpdate = UserProfileChangeRequest.Builder()
                         .setDisplayName(capName)
                         .build()
                     u.updateProfile(profileUpdate)
                         .addOnSuccessListener {
-                            // write initial user data: displayName, role, trialStart
                             dbRef.child(u.uid)
                                 .setValue(
                                     mapOf(
                                         "displayName" to capName,
-                                        "role"        to UserRole.User.name,
+                                        "role"        to UserRole.Trial.name,
                                         "trialStart"  to ServerValue.TIMESTAMP
                                     )
                                 )
                                 .addOnSuccessListener {
-                                    // Immediately reflect in-app:
-                                    _role.value = UserRole.User
+                                    _role.value = UserRole.Trial
                                     _trialStart.value = System.currentTimeMillis()
                                     onResult(true, null)
                                 }
@@ -154,7 +159,6 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /** Update profile fields */
     fun updateProfile(
         info: SellerInfo,
         onResult: (Boolean, String?) -> Unit
@@ -194,7 +198,6 @@ class AuthViewModel : ViewModel() {
             .addOnFailureListener { ex -> onResult(false, ex.localizedMessage) }
     }
 
-    /** Change current user’s password */
     fun changePassword(
         currentPassword: String,
         newPassword: String,
@@ -217,7 +220,6 @@ class AuthViewModel : ViewModel() {
             .addOnFailureListener { ex -> onResult(false, ex.localizedMessage) }
     }
 
-    /** Sign out and reset state */
     fun signOut() {
         auth.signOut()
         _user.value        = null
@@ -226,7 +228,6 @@ class AuthViewModel : ViewModel() {
         _profileInfo.value = null
     }
 
-    /** Called when subscription is purchased */
     fun onSubscriptionPurchased() {
         auth.currentUser?.uid?.let { uid ->
             dbRef.child(uid)
@@ -238,51 +239,31 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    @Suppress("unused") // Admin tool
+    @Suppress("unused")
     fun grantAdmin(uid: String) {
         dbRef.child(uid).child("role")
             .setValue(UserRole.Admin.name)
     }
 
-    /** Listen for RTDB profile changes (including displayName) */
     private fun listenForProfile(uid: String) {
         dbRef.child(uid)
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (!snapshot.exists()) return
                     _profileInfo.value = SellerInfo(
-                        name     = snapshot.child("displayName")
-                            .getValue(String::class.java)
-                            .orEmpty(),
-                        dba      = snapshot.child("dba")
-                            .getValue(String::class.java)
-                            ?.takeIf { it.isNotBlank() },
-                        address1 = snapshot.child("address1")
-                            .getValue(String::class.java)
-                            .orEmpty(),
-                        address2 = snapshot.child("address2")
-                            .getValue(String::class.java)
-                            ?.takeIf { it.isNotBlank() },
-                        city     = snapshot.child("city")
-                            .getValue(String::class.java)
-                            .orEmpty(),
-                        state    = snapshot.child("state")
-                            .getValue(String::class.java)
-                            .orEmpty(),
-                        zip      = snapshot.child("zip")
-                            .getValue(String::class.java)
-                            .orEmpty(),
-                        phone    = snapshot.child("phone")
-                            .getValue(String::class.java)
-                            .orEmpty(),
-                        email    = snapshot.child("email")
-                            .getValue(String::class.java)
-                            ?.takeIf { it.isNotBlank() }
+                        name     = snapshot.child("displayName").getValue(String::class.java).orEmpty(),
+                        dba      = snapshot.child("dba").getValue(String::class.java)?.takeIf { it.isNotBlank() },
+                        address1 = snapshot.child("address1").getValue(String::class.java).orEmpty(),
+                        address2 = snapshot.child("address2").getValue(String::class.java)?.takeIf { it.isNotBlank() },
+                        city     = snapshot.child("city").getValue(String::class.java).orEmpty(),
+                        state    = snapshot.child("state").getValue(String::class.java).orEmpty(),
+                        zip      = snapshot.child("zip").getValue(String::class.java).orEmpty(),
+                        phone    = snapshot.child("phone").getValue(String::class.java).orEmpty(),
+                        email    = snapshot.child("email").getValue(String::class.java)?.takeIf { it.isNotBlank() }
                     )
                 }
-                override fun onCancelled(error: DatabaseError) {
-                    // no-op
-                }
+
+                override fun onCancelled(error: DatabaseError) {}
             })
     }
 }

@@ -22,7 +22,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun TrialCountdown(
     trialStart: Long?,
-    onActiveChanged: (Boolean) -> Unit,
+    onActiveChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (trialStart == null) return

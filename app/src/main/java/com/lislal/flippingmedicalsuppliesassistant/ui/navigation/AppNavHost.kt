@@ -1,4 +1,3 @@
-// app/src/main/java/com/lislal/flippingmedicalsuppliesassistant/ui/navigation/AppNavHost.kt
 package com.lislal.flippingmedicalsuppliesassistant.ui.navigation
 
 import android.app.Activity
@@ -23,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.lislal.flippingmedicalsuppliesassistant.R
 import com.lislal.flippingmedicalsuppliesassistant.data.HomeViewModel
 import com.lislal.flippingmedicalsuppliesassistant.data.Product
+import com.lislal.flippingmedicalsuppliesassistant.data.UserRole
 import com.lislal.flippingmedicalsuppliesassistant.ui.admin.AdminScreen
 import com.lislal.flippingmedicalsuppliesassistant.ui.ads.BannerAd
 import com.lislal.flippingmedicalsuppliesassistant.ui.auth.AuthViewModel
@@ -80,8 +80,19 @@ fun AppNavHost() {
     val role         by authVm.role.collectAsState()
     val trialStart   by authVm.trialStart.collectAsState()
 
-    // Local flag driven by TrialCountdown’s onActiveChanged callback:
-    var isTrialActiveLocal by remember { mutableStateOf(false) }
+    // Now we just use the AuthViewModel’s built-in flow:
+    val isTrialActive by authVm.isTrialActive.collectAsState()
+
+    val gated by remember(role, isTrialActive) {
+        derivedStateOf {
+            role != UserRole.Subscriber &&
+                    role != UserRole.Admin &&
+                    !isTrialActive
+        }
+    }
+
+    val hasFullAccess by authVm.hasFullAccess.collectAsState()
+
 
     // ── Products & PriceHistory ────────────────────────────
     val homeVm          : HomeViewModel = viewModel()
@@ -111,7 +122,7 @@ fun AppNavHost() {
             BottomNavigationBar(
                 navController   = navController,
                 currentRole     = role,
-                isTrialActive   = isTrialActiveLocal
+                hasFullAccess = hasFullAccess
             )
         }
     ) { innerPadding ->
@@ -149,13 +160,10 @@ fun AppNavHost() {
                     Spacer(Modifier.height(8.dp))
 
                     // Always compose the countdown if trialStart != null
-                    if (trialStart != null) {
+                    trialStart?.let { start ->
                         TrialCountdown(
-                            trialStart      = trialStart,
-                            onActiveChanged = { active ->
-                                isTrialActiveLocal = active
-                            },
-                            modifier        = Modifier.clickable {
+                            trialStart = start,
+                            modifier = Modifier.clickable {
                                 navController.navigate("subscription")
                             }
                         )
@@ -198,7 +206,7 @@ fun AppNavHost() {
 
             // ── Trial Reminder Banner ─────────────────────────
             // Only show the banner while the trial is active
-            if (isTrialActiveLocal) {
+            if (isTrialActive) {
                 TrialReminderBanner(
                     trialStart     = trialStart,
                     onUpgradeClick = { navController.navigate("subscription") }
@@ -239,17 +247,29 @@ fun AppNavHost() {
                                 )
                             }
                     }
-                    composable("scan")     { ScanScreen() }
+                    composable("scan") {
+                        if (hasFullAccess) {
+                            ScanScreen()
+                        } else {
+                            SubscriptionScreen(navController)
+                        }
+                    }
                     composable("invoice")  { InvoiceScreen() }
                     composable("admin")    {
                         AdminScreen(
                             homeViewModel  = homeVm,
                             currentRole    = role,
-                            isTrialActive  = isTrialActiveLocal,
+                            isTrialActive  = isTrialActive,
                             onUpgradeClick = { /* … */ }
                         )
                     }
-                    composable("settings")    { SettingsScreen() }
+                    composable("settings") {
+                        if (hasFullAccess) {
+                            SettingsScreen()
+                        } else {
+                            SubscriptionScreen(navController)
+                        }
+                    }
                     composable("subscription"){ SubscriptionScreen(navController) }
                 }
             }

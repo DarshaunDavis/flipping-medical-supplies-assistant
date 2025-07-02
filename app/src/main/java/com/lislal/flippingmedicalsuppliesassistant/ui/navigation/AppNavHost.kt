@@ -159,10 +159,10 @@ fun AppNavHost() {
                     ThemedAppLogo(Modifier.size(120.dp))
                     Spacer(Modifier.height(8.dp))
 
-                    // Always compose the countdown if trialStart != null
-                    trialStart?.let { start ->
+                    // Only show countdown if user is in Trial role and trial is active
+                    if (role == UserRole.Trial && isTrialActive && trialStart != null) {
                         TrialCountdown(
-                            trialStart = start,
+                            trialStart = trialStart,
                             modifier = Modifier.clickable {
                                 navController.navigate("subscription")
                             }
